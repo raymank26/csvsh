@@ -16,8 +16,14 @@ dependencies {
     testImplementation("org.jetbrains.kotlin:kotlin-test")
 
     testImplementation("org.jetbrains.kotlin:kotlin-test-junit")
+
+    antlr("org.antlr:antlr4:4.7.2") // use ANTLR version 4
 }
 
 application {
     mainClassName = "com.github.raymank26.AppKt"
+}
+
+tasks.generateGrammarSource {
+    arguments = arguments + listOf("-visitor", "-long-messages")
 }
