@@ -31,6 +31,16 @@ class SqlGrammarTest {
     }
 
     @Test
+    fun testSelectWithWhere2() {
+        testParser("SELECT a FROM '5' WHERE a < 5 AND b > 4 OR b LIKE '5'")
+    }
+
+    @Test
+    fun testCreateIndex() {
+        testParser("CREATE INDEX FOO ON 'foo' (a, b, c, d)")
+    }
+
+    @Test
     fun testLowercase() {
         testParser("select a from 'b'")
     }

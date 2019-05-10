@@ -6,11 +6,16 @@ parse
 
 statement
  : select
+ | createIndex
  ;
 
 select
- : SELECT selectExpr FROM TABLE
- | SELECT selectExpr FROM TABLE WHERE whereExpr
+ : SELECT selectExpr FROM table
+ | SELECT selectExpr FROM table WHERE whereExpr
+ ;
+
+table
+ : IDENTIFIER_Q
  ;
 
 selectExpr
@@ -19,13 +24,34 @@ selectExpr
  ;
 
 whereExpr
- : IDENTIFIER BOOL_COMP IDENTIFIER
+ : allIdentifiers BOOL_COMP allIdentifiers
  | whereExpr BOOLJOIN whereExpr
  ;
 
 selectColumn
+ : allIdentifiers
+ | allIdentifiers LEFT_PAR allIdentifiers RIGHT_PAR
+ ;
+
+allIdentifiers
+ : IDENTIFIER | IDENTIFIER_Q
+ ;
+
+createIndex
+ : CREATE INDEX indexName ON table LEFT_PAR indexColumn RIGHT_PAR
+ ;
+
+indexName
  : IDENTIFIER
- | IDENTIFIER LEFT_PAR IDENTIFIER RIGHT_PAR
+ ;
+
+indexColumn
+ : IDENTIFIER
+ | indexColumn COMMA indexColumn
+ ;
+
+ON
+ : 'ON'
  ;
 
 COMMA
@@ -41,7 +67,7 @@ BOOLJOIN
  ;
 
 BOOL_COMP
- : '<' | '>' | '<>'
+ : '<' | '>' | '<>' | 'LIKE'
  ;
 
 RIGHT_PAR
@@ -60,12 +86,20 @@ FROM
  : 'FROM'
  ;
 
-TABLE
- : '\''[0-9A-Za-b/]+'\''
+CREATE
+ : 'CREATE'
+ ;
+
+INDEX
+ : 'INDEX'
+ ;
+
+IDENTIFIER_Q
+ : '\''[0-9A-Za-z/]+'\''
  ;
 
 IDENTIFIER
- : [A-Z0-9a-b]+
+ : [A-Z0-9a-z]+
  ;
 
 WHITESPACE : [ \n] -> skip ;
