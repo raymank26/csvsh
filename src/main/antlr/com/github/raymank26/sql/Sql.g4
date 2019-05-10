@@ -10,14 +10,20 @@ statement
 
 select
  : SELECT selectExpr FROM TABLE
+ | SELECT selectExpr FROM TABLE WHERE whereExpr
  ;
 
 selectExpr
- : column COMMA column
- | column
+ : selectColumn COMMA selectColumn
+ | selectColumn
  ;
 
-column
+whereExpr
+ : IDENTIFIER BOOL_COMP IDENTIFIER
+ | whereExpr BOOLJOIN whereExpr
+ ;
+
+selectColumn
  : IDENTIFIER
  | IDENTIFIER LEFT_PAR IDENTIFIER RIGHT_PAR
  ;
@@ -30,16 +36,24 @@ LEFT_PAR
  : '('
  ;
 
+BOOLJOIN
+ : 'AND' | 'OR'
+ ;
+
+BOOL_COMP
+ : '<' | '>' | '<>'
+ ;
+
 RIGHT_PAR
  : ')'
  ;
 
-IDENTIFIER
- : [A-Z0-9]+
- ;
-
 SELECT
  : 'SELECT'
+ ;
+
+WHERE
+ : 'WHERE'
  ;
 
 FROM
@@ -47,7 +61,11 @@ FROM
  ;
 
 TABLE
- : '\''[0-9A-Z/]+'\''
+ : '\''[0-9A-Za-b/]+'\''
  ;
 
-WHITESPACE : ' \n\r' -> skip ;
+IDENTIFIER
+ : [A-Z0-9a-b]+
+ ;
+
+WHITESPACE : [ \n] -> skip ;

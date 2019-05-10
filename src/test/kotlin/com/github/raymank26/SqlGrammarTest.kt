@@ -2,6 +2,7 @@ package com.github.raymank26
 
 import com.github.raymank26.sql.SqlLexer
 import com.github.raymank26.sql.SqlParser
+import com.github.raymank26.util.CaseChangingCharStream
 import org.antlr.v4.runtime.BaseErrorListener
 import org.antlr.v4.runtime.CharStreams
 import org.antlr.v4.runtime.CommonTokenStream
@@ -20,12 +21,23 @@ import java.util.BitSet
 class SqlGrammarTest {
 
     @Test
-    fun testSelect() {
-        testParser("select * from 'a'")
+    fun testSimpleSelect() {
+        testParser("SELECT a FROM 'b'")
+    }
+
+    @Test
+    fun testSelectWithWhere() {
+        testParser("SELECT a FROM 'b' WHERE a < 5")
+    }
+
+    @Test
+    fun testLowercase() {
+        testParser("select a from 'b'")
     }
 
     private fun testParser(input: String) {
-        val parser = SqlParser(CommonTokenStream(SqlLexer(CharStreams.fromString(input))))
+        val cts = CommonTokenStream(SqlLexer(CaseChangingCharStream(CharStreams.fromString(input), true)))
+        val parser = SqlParser(cts)
         var hasError = false
         parser.addErrorListener(object: BaseErrorListener() {
             override fun reportAttemptingFullContext(recognizer: Parser?, dfa: DFA?, startIndex: Int, stopIndex: Int, conflictingAlts: BitSet?, configs: ATNConfigSet?) {
