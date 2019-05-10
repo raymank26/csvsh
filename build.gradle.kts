@@ -1,3 +1,5 @@
+import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
+
 plugins {
     id("org.jetbrains.kotlin.jvm").version("1.3.11")
 
@@ -25,5 +27,9 @@ application {
 }
 
 tasks.generateGrammarSource {
-    arguments = arguments + listOf("-visitor", "-long-messages")
+    arguments = arguments + listOf("-visitor", "-long-messages", "-package", "com.github.raymank26.sql")
 }
+
+//val compileKotlin: KotlinCompile by tasks
+project.tasks.getByName("compileKotlin").dependsOn(project.tasks.getByName("generateGrammarSource"))
+
