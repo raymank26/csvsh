@@ -36,6 +36,11 @@ class SqlGrammarTest {
     }
 
     @Test
+    fun testSelectWithWhere3() {
+        testParser("SELECT '5' FROM 'a' WHERE (a IN (1,2,3) AND 5 = 5) OR 4 = 4")
+    }
+
+    @Test
     fun testCreateIndex() {
         testParser("CREATE INDEX FOO ON 'foo' (a, b, c, d)")
     }

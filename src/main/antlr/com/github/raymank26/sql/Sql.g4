@@ -10,8 +10,7 @@ statement
  ;
 
 select
- : SELECT selectExpr FROM table
- | SELECT selectExpr FROM table WHERE whereExpr
+ : SELECT selectExpr FROM table (WHERE whereExpr)?
  ;
 
 table
@@ -19,22 +18,48 @@ table
  ;
 
 selectExpr
- : selectColumn COMMA selectColumn
- | selectColumn
+ : selectColumn (COMMA selectColumn)*
+ | allColumns
+ ;
+
+allColumns
+ : STAR
  ;
 
 whereExpr
- : allIdentifiers BOOL_COMP allIdentifiers
- | whereExpr BOOLJOIN whereExpr
+ : variable BOOL_COMP variable
+ | LEFT_PAR whereExpr RIGHT_PAR
+ | whereExpr AND whereExpr
+ | whereExpr OR whereExpr
  ;
 
 selectColumn
- : allIdentifiers
- | allIdentifiers LEFT_PAR allIdentifiers RIGHT_PAR
+ : variable
+ | variable LEFT_PAR variable RIGHT_PAR
  ;
 
-allIdentifiers
- : IDENTIFIER | IDENTIFIER_Q
+variable
+ : LEFT_PAR variable (COMMA variable)* RIGHT_PAR
+ | integerNumber
+ | floatNumber
+ | string
+ | reference
+ ;
+
+reference
+ : IDENTIFIER
+ ;
+
+string
+ : IDENTIFIER_Q
+ ;
+
+integerNumber
+ : INTEGER
+ ;
+
+floatNumber
+ : FLOAT
  ;
 
 createIndex
@@ -46,8 +71,23 @@ indexName
  ;
 
 indexColumn
+ : indexColumnExpr (COMMA indexColumnExpr)*
+ ;
+
+indexColumnExpr
  : IDENTIFIER
- | indexColumn COMMA indexColumn
+ ;
+
+INTEGER
+ : [0-5]+
+ ;
+
+fragment EXPONENT : ('e'|'E') ('+'|'-')? ('0'..'9')+ ;
+
+FLOAT
+ :   ('0'..'9')+ '.' ('0'..'9')* EXPONENT?
+ |   '.' ('0'..'9')+ EXPONENT?
+ |   ('0'..'9')+ EXPONENT
  ;
 
 ON
@@ -62,12 +102,20 @@ LEFT_PAR
  : '('
  ;
 
-BOOLJOIN
- : 'AND' | 'OR'
+AND
+ : 'AND'
+ ;
+
+OR
+ : 'OR'
+ ;
+
+STAR
+ : '*'
  ;
 
 BOOL_COMP
- : '<' | '>' | '<>' | 'LIKE'
+ : '<' | '>' | '<>' | 'LIKE' | '=' | 'IN'
  ;
 
 RIGHT_PAR
@@ -95,11 +143,11 @@ INDEX
  ;
 
 IDENTIFIER_Q
- : '\''[0-9A-Za-z/]+'\''
+ : '\'' IDENTIFIER '\''
  ;
 
 IDENTIFIER
- : [A-Z0-9a-z]+
+ : [A-Z0-9a-z./]+
  ;
 
 WHITESPACE : [ \n] -> skip ;
