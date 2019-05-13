@@ -79,11 +79,7 @@ indexName
  ;
 
 indexColumn
- : indexColumnExpr (COMMA indexColumnExpr)*
- ;
-
-indexColumnExpr
- : IDENTIFIER
+ : reference (COMMA reference)*
  ;
 
 INTEGER
