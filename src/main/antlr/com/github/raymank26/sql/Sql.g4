@@ -10,7 +10,15 @@ statement
  ;
 
 select
- : SELECT selectExpr FROM table (WHERE whereExpr)?
+ : SELECT selectExpr FROM table (WHERE whereExpr)? (ORDER_BY orderByExpr)? (LIMIT limitExpr)?
+ ;
+
+orderByExpr
+ : reference
+ ;
+
+limitExpr
+ : INTEGER
  ;
 
 table
@@ -28,6 +36,7 @@ allColumns
 
 whereExpr
  : variable BOOL_COMP variable
+ | variable BOOL_COMP_IN LEFT_PAR variable (COMMA variable)* RIGHT_PAR
  | LEFT_PAR whereExpr RIGHT_PAR
  | whereExpr AND whereExpr
  | whereExpr OR whereExpr
@@ -39,8 +48,7 @@ selectColumn
  ;
 
 variable
- : LEFT_PAR variable (COMMA variable)* RIGHT_PAR
- | integerNumber
+ : integerNumber
  | floatNumber
  | string
  | reference
@@ -55,11 +63,11 @@ string
  ;
 
 integerNumber
- : INTEGER
+ : (UNARY_MINUS)? INTEGER
  ;
 
 floatNumber
- : FLOAT
+ : (UNARY_MINUS)? FLOAT
  ;
 
 createIndex
@@ -90,6 +98,10 @@ FLOAT
  |   ('0'..'9')+ EXPONENT
  ;
 
+UNARY_MINUS
+ : '-'
+ ;
+
 ON
  : 'ON'
  ;
@@ -115,7 +127,11 @@ STAR
  ;
 
 BOOL_COMP
- : '<' | '>' | '<>' | 'LIKE' | '=' | 'IN'
+ : '<' | '>' | '<>' | 'LIKE' | '='
+ ;
+
+BOOL_COMP_IN
+ : 'NOT IN' | 'IN'
  ;
 
 RIGHT_PAR
@@ -128,6 +144,14 @@ SELECT
 
 WHERE
  : 'WHERE'
+ ;
+
+ORDER_BY
+ : 'ORDER BY'
+ ;
+
+LIMIT
+ : 'LIMIT'
  ;
 
 FROM
