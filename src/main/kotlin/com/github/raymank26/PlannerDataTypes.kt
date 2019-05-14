@@ -32,9 +32,9 @@ enum class ExpressionOperator {
     ;
 }
 
-sealed class ExpressionType
-data class ExpressionAtom(val leftVal: SqlValue, val operator: Operator, val rightVal: SqlValue) : ExpressionType()
-data class ExpressionNode(val left: ExpressionType, val operator: ExpressionOperator, val right: ExpressionType): ExpressionType()
+sealed class Expression
+data class ExpressionAtom(val leftVal: SqlValue, val operator: Operator, val rightVal: SqlValue) : Expression()
+data class ExpressionNode(val left: Expression, val operator: ExpressionOperator, val right: Expression): Expression()
 
 sealed class SqlValue
 data class RefValue(val name: String): SqlValue()
@@ -48,7 +48,7 @@ class SyntaxException(msg: String) : Exception(msg)
 
 data class PlanDescription(
         val expressionsBySource: Map<ScanSource, List<ExpressionAtom>>,
-        val expressionTree: ExpressionType
+        val expressionTree: Expression
 )
 
 data class EngineContext(val currentDirectory: String)
