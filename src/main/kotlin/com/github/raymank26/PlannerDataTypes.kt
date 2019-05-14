@@ -1,5 +1,7 @@
 package com.github.raymank26
 
+import org.apache.commons.csv.CSVFormat
+import java.io.FileDescriptor
 import java.nio.file.Path
 
 /**
@@ -46,21 +48,25 @@ data class ExpressionNode(val left: Expression, val operator: ExpressionOperator
     }
 }
 
-class BaseExpressionVisitor<T> {
+open class BaseExpressionVisitor<T> {
 
-    fun visitAtom(atom: ExpressionAtom): T? {
+    fun visitExpression(tree: Expression): T? {
+        return tree.accept(this)
+    }
+
+    open fun visitAtom(atom: ExpressionAtom): T? {
         return default()
     }
 
-    fun visitNode(node: ExpressionNode): T? {
+    open fun visitNode(node: ExpressionNode): T? {
         return combine(node.left.accept(this), node.right.accept(this))
     }
 
-    internal fun default(): T? {
+    protected fun default(): T? {
         return null
     }
 
-    internal fun combine(left: T?, right: T?): T? {
+    protected fun combine(left: T?, right: T?): T? {
         return right
     }
 }
@@ -74,13 +80,23 @@ data class ListValue(val value: List<SqlValue>): SqlValue()
 
 class PlannerException(msg: String) : Exception(msg)
 class SyntaxException(msg: String) : Exception(msg)
+class ExecutorException(msg: String): Exception(msg)
 
 data class PlanDescription(
         val expressionsBySource: Map<ScanSource, List<ExpressionAtom>>,
         val expressionTree: Expression
 )
 
-data class EngineContext(val currentDirectory: String)
+data class EngineContext(val currentDirectory: String,
+                         val csvInputPath: Path,
+                         val csvFormat: CSVFormat,
+                         val csvHeader: List<String>,
+                         val csvFileDescriptor: FileDescriptor
+                         )
+
+data class CsvContent(val headers: List<String>, val rows: List<CsvRow>)
+data class CsvRow(val columns: List<String>)
+
 
 
 

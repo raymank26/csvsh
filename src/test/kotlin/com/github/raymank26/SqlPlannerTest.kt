@@ -27,7 +27,7 @@ class SqlPlannerTest {
         )
         val planDescription: PlanDescription = sqlPlanner.makePlan(sqlAstBuilder.parse(
                 "SELECT * FROM 'a' WHERE (5 > a AND (a > 2) AND b IN (1,2,3) OR c = 4)"), availableIndexes)
-                ?: fail("foobar")
+                ?: fail("Unable to execute plan")
         val expBySource = planDescription.expressionsBySource
 
         assertEquals(3, expBySource.size)
