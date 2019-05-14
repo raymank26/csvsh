@@ -32,9 +32,38 @@ enum class ExpressionOperator {
     ;
 }
 
-sealed class Expression
-data class ExpressionAtom(val leftVal: SqlValue, val operator: Operator, val rightVal: SqlValue) : Expression()
-data class ExpressionNode(val left: Expression, val operator: ExpressionOperator, val right: Expression): Expression()
+sealed class Expression {
+    abstract fun <T> accept(visitor: BaseExpressionVisitor<T>): T?
+}
+data class ExpressionAtom(val leftVal: SqlValue, val operator: Operator, val rightVal: SqlValue) : Expression() {
+    override fun <T> accept(visitor: BaseExpressionVisitor<T>): T? {
+        return visitor.visitAtom(this)
+    }
+}
+data class ExpressionNode(val left: Expression, val operator: ExpressionOperator, val right: Expression): Expression() {
+    override fun <T> accept(visitor: BaseExpressionVisitor<T>): T? {
+        return visitor.visitNode(this)
+    }
+}
+
+class BaseExpressionVisitor<T> {
+
+    fun visitAtom(atom: ExpressionAtom): T? {
+        return default()
+    }
+
+    fun visitNode(node: ExpressionNode): T? {
+        return combine(node.left.accept(this), node.right.accept(this))
+    }
+
+    internal fun default(): T? {
+        return null
+    }
+
+    internal fun combine(left: T?, right: T?): T? {
+        return right
+    }
+}
 
 sealed class SqlValue
 data class RefValue(val name: String): SqlValue()
