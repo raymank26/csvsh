@@ -6,7 +6,7 @@ import org.antlr.v4.runtime.misc.Interval
 /**
  * Date: 2019-05-11.
  */
-class CaseChangingCharStream(val stream: CharStream, val upper: Boolean) : CharStream {
+class CaseChangingCharStream(private val stream: CharStream, private val upper: Boolean) : CharStream {
 
     override fun getText(interval: Interval): String {
         return stream.getText(interval)

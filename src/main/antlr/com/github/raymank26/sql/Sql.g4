@@ -35,11 +35,11 @@ allColumns
  ;
 
 whereExpr
- : variable BOOL_COMP variable
- | variable BOOL_COMP_IN LEFT_PAR variable (COMMA variable)* RIGHT_PAR
- | LEFT_PAR whereExpr RIGHT_PAR
- | whereExpr AND whereExpr
- | whereExpr OR whereExpr
+ : variable BOOL_COMP variable #whereExprAtom
+ | variable BOOL_COMP_IN LEFT_PAR variable (COMMA variable)* RIGHT_PAR #whereExprIn
+ | LEFT_PAR whereExpr RIGHT_PAR #whereExprPar
+ | whereExpr AND whereExpr #whereExprAnd
+ | whereExpr OR whereExpr #whereExprOr
  ;
 
 selectColumn
@@ -47,11 +47,11 @@ selectColumn
  | variable LEFT_PAR variable RIGHT_PAR
  ;
 
-variable
- : integerNumber
- | floatNumber
- | string
- | reference
+variable locals [String type]
+ : integerNumber { $type = "integer"; }
+ | floatNumber { $type = "float"; }
+ | string { $type = "string"; }
+ | reference { $type = "reference"; }
  ;
 
 reference
@@ -71,15 +71,11 @@ floatNumber
  ;
 
 createIndex
- : CREATE INDEX indexName ON table LEFT_PAR indexColumn RIGHT_PAR
+ : CREATE INDEX indexName ON table LEFT_PAR reference RIGHT_PAR
  ;
 
 indexName
  : IDENTIFIER
- ;
-
-indexColumn
- : reference (COMMA reference)*
  ;
 
 INTEGER
