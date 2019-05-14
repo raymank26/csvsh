@@ -7,7 +7,10 @@ import com.github.raymank26.sql.SqlParser
  */
 class SqlPlanner {
 
-    fun makePlan(sqlAst: SqlParser.ParseContext, availableIndexes: List<IndexDescription>): Map<ScanSource, MutableList<Expression>> {
-        return SqlPlannerVisitor(availableIndexes).visit(sqlAst)
+    fun makePlan(sqlAst: SqlParser.ParseContext, availableIndexes: List<IndexDescription>): PlanDescription? {
+        val whereExpr = sqlAst.statement().select().whereExpr() ?: return null
+        val resultPlan = SqlPlannerVisitor(availableIndexes).visit(whereExpr)
+        require(resultPlan != null)
+        return resultPlan
     }
 }

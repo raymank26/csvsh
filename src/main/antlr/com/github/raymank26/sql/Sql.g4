@@ -38,8 +38,7 @@ whereExpr
  : variable BOOL_COMP variable #whereExprAtom
  | variable BOOL_COMP_IN LEFT_PAR variable (COMMA variable)* RIGHT_PAR #whereExprIn
  | LEFT_PAR whereExpr RIGHT_PAR #whereExprPar
- | whereExpr AND whereExpr #whereExprAnd
- | whereExpr OR whereExpr #whereExprOr
+ | whereExpr (AND | OR) whereExpr #whereExprBool
  ;
 
 selectColumn
