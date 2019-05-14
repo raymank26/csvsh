@@ -16,7 +16,7 @@ class SqlPlannerTest {
                 IndexDescription(name = "aIndex", fieldName = "a"),
                 IndexDescription(name = "bIndex", fieldName = "b")
         )
-        val plan: Map<ScanSource, MutableList<Expression>> = sqlPlanner.makePlan(sqlAstBuilder.parse(
+        val plan: Map<ScanSource, List<Expression>> = sqlPlanner.makePlan(sqlAstBuilder.parse(
                 "SELECT * FROM 'a' WHERE (5 > a AND (a > 2) AND b IN (1,2,3) OR c = 4)"), availableIndexes)
         assertEquals(3, plan.size)
         assertEquals(2, plan.getValue(IndexInput("aIndex")).size)

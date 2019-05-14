@@ -7,6 +7,7 @@ import com.github.raymank26.sql.SqlParser
  * Date: 2019-05-13.
  */
 class SqlPlannerVisitor(private val availableIndexes: List<IndexDescription>) : SqlBaseVisitor<MutableMap<ScanSource, MutableList<Expression>>>() {
+
     override fun visitWhereExprAtom(ctx: SqlParser.WhereExprAtomContext): MutableMap<ScanSource, MutableList<Expression>> {
         val a = parseVariable(ctx.variable(0))
         val b = parseVariable(ctx.variable(1))
@@ -22,14 +23,11 @@ class SqlPlannerVisitor(private val availableIndexes: List<IndexDescription>) : 
     }
 
     override fun visitWhereExprIn(ctx: SqlParser.WhereExprInContext): MutableMap<ScanSource, MutableList<Expression>> {
-        val field: RefValue = parseVariable(ctx.variable(0)).also {
-            if (it !is RefValue) {
-                throw PlannerException("Left variable has to be table field")
-            }
-        } as RefValue
+        val field: RefValue = parseVariable(ctx.variable(0)) as? RefValue
+                ?: throw PlannerException("Left variable has to be table field")
 
         val others = ctx.variable().drop(1)
-        var type: Class<*>? =  null
+        var type: Class<*>? = null
         val variables: MutableList<SqlValue> = mutableListOf()
         for (variable in others) {
             val parsedVariable = parseVariable(variable)

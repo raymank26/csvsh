@@ -33,7 +33,7 @@ class SqlGrammarTest {
 
     @Test
     fun testCreateIndex() {
-        testParser("CREATE INDEX FOO ON 'foo' (a, b, c, d)")
+        testParser("CREATE INDEX FOO ON 'foo' (a)")
     }
 
     @Test
