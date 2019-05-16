@@ -19,17 +19,34 @@ class SqlPlanner {
 private class SqlPlannerVisitor(private val availableIndexes: List<IndexDescription>) : SqlBaseVisitor<PlanDescription?>() {
 
     override fun visitWhereExprAtom(ctx: SqlParser.WhereExprAtomContext): PlanDescription {
-        val a = parseVariable(ctx.variable(0))
-        val b = parseVariable(ctx.variable(1))
-        val operator = Operator.TOKEN_TO_OPERATOR[ctx.BOOL_COMP().text]
+        var left = parseVariable(ctx.variable(0))
+        var right = parseVariable(ctx.variable(1))
+        var operator = Operator.TOKEN_TO_OPERATOR[ctx.BOOL_COMP().text]
                 ?: throw RuntimeException("Unable to parse operator ${ctx.BOOL_COMP().text}")
-        val source = when {
-            a is RefValue && b is RefValue -> CsvInput
-            a is RefValue -> getSource(a.name)
-            b is RefValue -> getSource(b.name)
+
+        val source: ScanSource
+        when {
+            left is RefValue && right !is RefValue -> {
+                source = getSource(left.name)
+            }
+            right is RefValue && left !is RefValue -> {
+                source = getSource(right.name)
+                val temp = left
+                left = right
+                right = temp
+                operator = when (operator) {
+                    Operator.LESS_THAN -> Operator.GREATER_THAN
+                    Operator.GREATER_THAN -> Operator.LESS_THAN
+                    Operator.LIKE -> Operator.LIKE
+                    Operator.IN -> Operator.IN
+                    Operator.EQ -> Operator.EQ
+                    Operator.LESS_EQ_THAN -> Operator.GREATER_EQ_THAN
+                    Operator.GREATER_EQ_THAN -> Operator.LESS_EQ_THAN
+                }
+            }
             else -> throw PlannerException("Left or right expression has to be a CSV field")
         }
-        val atom = ExpressionAtom(a, operator, b)
+        val atom = ExpressionAtom(left, operator, right)
         return PlanDescription(mutableMapOf(Pair(source, mutableListOf(atom))), atom)
     }
 

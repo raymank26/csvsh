@@ -10,7 +10,7 @@ class ExecutorEngine {
     private val sqlExecutor: SqlExecutor = SqlExecutor()
 
     @Throws(SyntaxException::class)
-    fun execute(sqlStatement: String, engineContext: EngineContext): CsvContent {
+    fun execute(sqlStatement: String, engineContext: EngineContext): DatasetResult {
         val parsedStatement = sqlParser.parse(sqlStatement)
         val tableName: String = SqlTableVisitor().visit(parsedStatement)
                 ?: throw RuntimeException("Table is not defined")

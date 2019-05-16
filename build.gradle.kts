@@ -17,6 +17,8 @@ dependencies {
 
     implementation("org.apache.commons:commons-csv:1.6")
 
+    implementation("org.mapdb:mapdb:3.0.7")
+
     testImplementation("org.jetbrains.kotlin:kotlin-test")
 
     testImplementation("org.jetbrains.kotlin:kotlin-test-junit")
