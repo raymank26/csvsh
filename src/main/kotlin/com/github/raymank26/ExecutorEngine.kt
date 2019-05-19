@@ -14,10 +14,10 @@ class ExecutorEngine {
     private val sqlExecutor: SqlExecutor = SqlExecutor()
     private val ssExecutor = ServiceStatementsExecutor(CSVFormat.RFC4180)
 
-    fun execute(sqlStatement: String): ExecutorResponse {
+    fun execute(inputLine: String): ExecutorResponse {
         val parsedStatement: StatementType
         try {
-            parsedStatement = sqlParser.parse(sqlStatement)
+            parsedStatement = sqlParser.parse(inputLine)
         } catch (e: SyntaxException) {
             return TextResponse(e.message!!)
         }
@@ -37,9 +37,9 @@ class ExecutorEngine {
                 val indexes = ssExecutor.loadIndexes(csvPath)
 
                 val planDescriptor = sqlPlanner.makePlan(parsedStatement.ctx, indexes.map { it.description })
-                val toMap: Map<String, ReadOnlyIndex> = indexes.map { id -> Pair(id.description.fieldName, id.indexContent) }.toMap()
+                val fieldToIndex: Map<String, ReadOnlyIndex> = indexes.map { id -> Pair(id.description.fieldName, id.indexContent) }.toMap()
                 val result = sqlExecutor.execute(EngineContext(CsvDatasetReader(CSVFormat.RFC4180, csvPath),
-                        toMap), planDescriptor)
+                        fieldToIndex), planDescriptor)
                 TextResponse(result.toString())
             }
         }

@@ -1,6 +1,5 @@
 package com.github.raymank26
 
-import com.github.raymank26.sql.SqlBaseVisitor
 import com.github.raymank26.sql.SqlLexer
 import com.github.raymank26.sql.SqlParser
 import com.github.raymank26.util.CaseChangingCharStream
