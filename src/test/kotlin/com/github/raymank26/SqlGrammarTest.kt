@@ -37,6 +37,11 @@ class SqlGrammarTest {
     }
 
     @Test
+    fun testDescribe() {
+        testParser("DESCRIBE TABLE 'foo'")
+    }
+
+    @Test
     fun testFailure() {
         testParser("select a", true)
     }
