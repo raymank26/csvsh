@@ -4,7 +4,7 @@ import org.mapdb.BTreeMap
 import java.util.BitSet
 import java.util.NavigableMap
 
-interface ReadOnlyIndex {
+interface ReadOnlyIndex : AutoCloseable {
     fun getType(): FieldType
 }
 
@@ -56,6 +56,10 @@ class MapDBReadonlyIndex<T>(
             }
         }
         return bs
+    }
+
+    override fun close() {
+        bTreeMap.close()
     }
 }
 

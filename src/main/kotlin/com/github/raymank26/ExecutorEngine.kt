@@ -36,11 +36,17 @@ class ExecutorEngine {
                         ?: throw RuntimeException("Table is not defined")
                 val indexes = ssExecutor.loadIndexes(csvPath)
 
-                val planDescriptor = sqlPlanner.makePlan(parsedStatement.ctx, indexes.map { it.description })
-                val fieldToIndex: Map<String, ReadOnlyIndex> = indexes.map { id -> Pair(id.description.fieldName, id.indexContent) }.toMap()
-                val result = sqlExecutor.execute(EngineContext(CsvDatasetReader(CSVFormat.RFC4180, csvPath),
-                        fieldToIndex), planDescriptor)
-                TextResponse(result.toString())
+                try {
+                    val planDescriptor = sqlPlanner.makePlan(parsedStatement.ctx, indexes.map { it.description })
+                    val fieldToIndex: Map<String, ReadOnlyIndex> = indexes.map { id -> Pair(id.description.fieldName, id.indexContent) }.toMap()
+                    val result = sqlExecutor.execute(EngineContext(CsvDatasetReader(CSVFormat.RFC4180, csvPath),
+                            fieldToIndex), planDescriptor)
+                    TextResponse(result.toString())
+                } finally {
+                    indexes.forEach {
+                        it.indexContent.use {  }
+                    }
+                }
             }
         }
     }
