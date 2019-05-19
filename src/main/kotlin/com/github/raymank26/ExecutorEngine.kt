@@ -15,7 +15,14 @@ class ExecutorEngine {
     private val ssExecutor = ServiceStatementsExecutor(CSVFormat.RFC4180)
 
     fun execute(sqlStatement: String): ExecutorResponse {
-        return when (val parsedStatement = sqlParser.parse(sqlStatement)) {
+        val parsedStatement: StatementType
+        try {
+            parsedStatement = sqlParser.parse(sqlStatement)
+        } catch (e: SyntaxException) {
+            return TextResponse(e.message!!)
+        }
+
+        return when (parsedStatement) {
             is CreateIndexType -> {
                 ssExecutor.createIndex(parsedStatement.ctx)
                 VoidResponse

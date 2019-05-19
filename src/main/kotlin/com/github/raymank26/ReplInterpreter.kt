@@ -11,9 +11,8 @@ class ReplInterpreter {
     fun run() {
         val reader = BufferedReader(InputStreamReader(System.`in`))
         val engine = ExecutorEngine()
-        val currentDirectory = System.getProperty("user.dir")
         while (true) {
-            System.out.println("csvsh>>> ")
+            System.out.print("csvsh>>> ")
             val cmd = reader.readLine()
             when (val response = engine.execute(cmd)) {
                 is TextResponse -> println(response.value)
