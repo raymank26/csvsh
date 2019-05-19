@@ -63,11 +63,16 @@ class SqlExecutor {
                     }
                 }
                 FieldType.STRING -> {
-                    @Suppress("UNCHECKED_CAST") val stringIndex = index as ReadOnlyIndexString
                     val right = (expression.rightVal as StringValue).value
-                    val op = expression.operator
-                    require(op == Operator.IN)
-                    stringIndex.eq(right)
+                    @Suppress("UNCHECKED_CAST") val integerIndex = index as ReadOnlyIndexNumber<String>
+                    when (val op = expression.operator) {
+                        Operator.LESS_THAN -> integerIndex.lessThan(right)
+                        Operator.LESS_EQ_THAN -> integerIndex.lessThanEq(right)
+                        Operator.GREATER_THAN -> integerIndex.moreThan(right)
+                        Operator.GREATER_EQ_THAN -> integerIndex.moreThanEq(right)
+                        Operator.EQ -> integerIndex.eq(right)
+                        else -> throw RuntimeException("Unable to exec op = $op")
+                    }
                 }
             }
             result[expression] = rowsBitSet
@@ -77,7 +82,7 @@ class SqlExecutor {
 
     private fun evalOverCsv(engineContext: EngineContext, atoms: List<ExpressionAtom>): Map<ExpressionAtom, BitSet> {
         val result = mutableMapOf<ExpressionAtom, BitSet>()
-        engineContext.sourceProvider.read { row: DatasetRow ->
+        engineContext.sourceProvider.read({ row: DatasetRow ->
             for (expression in atoms) {
                 if (isRowApplicable(engineContext, row, expression)) {
                     result.compute(expression) {_, bs ->
@@ -90,16 +95,17 @@ class SqlExecutor {
                     }
                 }
             }
-        }
+        }, null)
         return result
     }
 
     private fun isRowApplicable(engineContext: EngineContext, row: DatasetRow, atom: ExpressionAtom): Boolean {
         val fieldName = (atom.leftVal as RefValue).name
-        val columnNum = requireNotNull(engineContext.fieldToColumnNum[fieldName])
+        val columnNum = engineContext.sourceProvider.getColumnInfo()[fieldName]?.position
+                ?: throw RuntimeException("Not found")
         val columnValue = row.columns[columnNum]
 
-        return when (requireNotNull(engineContext.fieldToType[fieldName])) {
+        return when (requireNotNull(engineContext.sourceProvider.getColumnInfo()[fieldName]).type) {
             FieldType.INTEGER -> {
                 val fieldValue: Int = columnValue.toInt()
                 val rightInt = (atom.rightVal as IntValue).value
@@ -130,18 +136,18 @@ class SqlExecutor {
 
     private fun readRows(engineContext: EngineContext, rowIndexes: BitSet?): DatasetResult {
         val rows = mutableListOf<DatasetRow>()
-        engineContext.sourceProvider.read { csvRow: DatasetRow ->
+        engineContext.sourceProvider.read({ csvRow: DatasetRow ->
             if (rowIndexes == null || rowIndexes[csvRow.rowNum]) {
                 rows.add(csvRow)
             }
-        }
+        }, null)
         return DatasetResult(engineContext.sourceProvider.getColumnNames(), rows)
     }
 }
 
-private class BitSetEvalMerger(private val atomsToBitset: Map<ExpressionAtom, BitSet>) : BaseExpressionVisitor<BitSet>() {
+private class BitSetEvalMerger(private val atomsToBitSet: Map<ExpressionAtom, BitSet>) : BaseExpressionVisitor<BitSet>() {
     override fun visitAtom(atom: ExpressionAtom): BitSet {
-        return requireNotNull(atomsToBitset[atom]) {"Unable to find CSV lines for atom" }
+        return requireNotNull(atomsToBitSet[atom]) {"Unable to find CSV lines for atom" }
     }
 
     override fun visitNode(node: ExpressionNode): BitSet {

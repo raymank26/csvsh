@@ -7,6 +7,7 @@ parse
 statement
  : select
  | createIndex
+ | describe
  ;
 
 select
@@ -71,6 +72,10 @@ floatNumber
 
 createIndex
  : CREATE INDEX indexName ON table LEFT_PAR reference RIGHT_PAR
+ ;
+
+describe
+ : DESCRIBE TABLE table
  ;
 
 indexName
@@ -151,6 +156,14 @@ FROM
 
 CREATE
  : 'CREATE'
+ ;
+
+DESCRIBE
+ : 'DESCRIBE'
+ ;
+
+TABLE
+ : 'TABLE'
  ;
 
 INDEX

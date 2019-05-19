@@ -3,16 +3,6 @@
  */
 package com.github.raymank26
 
-import com.github.raymank26.sql.SqlBaseListener
-
-class App {
-    val greeting: String
-        get() {
-            return "Hello world."
-        }
-}
-
 fun main(args: Array<String>) {
-    println(App().greeting)
-
+    ReplInterpreter().run()
 }

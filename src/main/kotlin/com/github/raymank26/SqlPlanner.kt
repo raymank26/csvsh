@@ -8,8 +8,8 @@ import com.github.raymank26.sql.SqlParser
  */
 class SqlPlanner {
 
-    fun makePlan(sqlAst: SqlParser.ParseContext, availableIndexes: List<IndexDescription>): PlanDescription? {
-        val whereExpr = sqlAst.statement().select().whereExpr() ?: return null
+    fun makePlan(sqlAst: SqlParser.SelectContext, availableIndexes: List<IndexDescription>): PlanDescription? {
+        val whereExpr = sqlAst.whereExpr() ?: return null
         val resultPlan = SqlPlannerVisitor(availableIndexes).visit(whereExpr)
         require(resultPlan != null)
         return resultPlan

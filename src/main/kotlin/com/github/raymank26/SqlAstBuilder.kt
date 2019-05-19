@@ -1,5 +1,6 @@
 package com.github.raymank26
 
+import com.github.raymank26.sql.SqlBaseVisitor
 import com.github.raymank26.sql.SqlLexer
 import com.github.raymank26.sql.SqlParser
 import com.github.raymank26.util.CaseChangingCharStream
@@ -11,7 +12,6 @@ import org.antlr.v4.runtime.RecognitionException
 import org.antlr.v4.runtime.Recognizer
 import org.antlr.v4.runtime.atn.ATNConfigSet
 import org.antlr.v4.runtime.dfa.DFA
-import java.lang.RuntimeException
 import java.util.BitSet
 
 /**
@@ -19,11 +19,11 @@ import java.util.BitSet
  */
 class SqlAstBuilder {
 
-    fun parse(sqlStatement: String): SqlParser.ParseContext {
+    fun parse(sqlStatement: String): StatementType {
         val cts = CommonTokenStream(SqlLexer(CaseChangingCharStream(CharStreams.fromString(sqlStatement), true)))
         val parser = SqlParser(cts)
         var unknownExceptionOccurred = false
-        parser.addErrorListener(object: BaseErrorListener() {
+        parser.addErrorListener(object : BaseErrorListener() {
             override fun reportAttemptingFullContext(recognizer: Parser?, dfa: DFA?, startIndex: Int, stopIndex: Int, conflictingAlts: BitSet?, configs: ATNConfigSet?) {
                 unknownExceptionOccurred = true
             }
@@ -44,6 +44,19 @@ class SqlAstBuilder {
         if (unknownExceptionOccurred) {
             throw RuntimeException("Exception while executing parser")
         }
-        return parse
+        return when {
+            parse?.statement()?.select() != null -> SelectStatement(parse.statement().select())
+            parse?.statement()?.createIndex() != null -> CreateIndexType(parse.statement().createIndex())
+            parse?.statement()?.describe() != null -> DescribeStatement(parse.statement().describe())
+            else -> throw RuntimeException("Unable to find appropriate construction")
+        }
     }
 }
+
+sealed class StatementType
+
+data class CreateIndexType(val ctx: SqlParser.CreateIndexContext) : StatementType()
+
+data class SelectStatement(val ctx: SqlParser.SelectContext) : StatementType()
+
+data class DescribeStatement(val ctx: SqlParser.DescribeContext) : StatementType()

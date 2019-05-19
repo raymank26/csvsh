@@ -14,8 +14,7 @@ class SqlPlannerTest {
 
     @Test
     fun testEmpty() {
-        val planDescription: PlanDescription? = sqlPlanner.makePlan(sqlAstBuilder.parse("SELECT * FROM 'a'"),
-                emptyList())
+        val planDescription: PlanDescription? = makePlan("SELECT * FROM 'a'", emptyList())
         assertNull(planDescription)
     }
 
@@ -25,8 +24,8 @@ class SqlPlannerTest {
                 IndexDescription(name = "aIndex", fieldName = "a"),
                 IndexDescription(name = "bIndex", fieldName = "b")
         )
-        val planDescription: PlanDescription = sqlPlanner.makePlan(sqlAstBuilder.parse(
-                "SELECT * FROM 'a' WHERE (5 > a AND (a > 2) AND b IN (1,2,3) OR c = 4)"), availableIndexes)
+        val planDescription: PlanDescription = makePlan(
+                "SELECT * FROM 'a' WHERE (5 > a AND (a > 2) AND b IN (1,2,3) OR c = 4)", availableIndexes)
                 ?: fail("Unable to execute plan")
         val expBySource = planDescription.expressionsBySource
 
@@ -34,5 +33,9 @@ class SqlPlannerTest {
         assertEquals(2, expBySource.getValue(IndexInput("aIndex")).size)
         assertEquals(1, expBySource.getValue(IndexInput("bIndex")).size)
         assertEquals(1, expBySource.getValue(CsvInput).size)
+    }
+
+    private fun makePlan(sql: String, indexes: List<IndexDescription>): PlanDescription? {
+        return sqlPlanner.makePlan((sqlAstBuilder.parse(sql) as SelectStatement).ctx, indexes)
     }
 }

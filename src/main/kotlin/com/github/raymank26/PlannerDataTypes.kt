@@ -1,23 +1,25 @@
 package com.github.raymank26
 
-import java.nio.file.Path
-
 /**
  * Date: 2019-05-13.
  */
 data class IndexDescription(val name: String, val fieldName: String)
 
-data class IndexDescriptionAndPath(val description: IndexDescription, val path: Path)
+data class IndexDescriptionAndPath(val description: IndexDescription, val indexContent: ReadOnlyIndex)
 
 sealed class ScanSource
 object CsvInput : ScanSource()
 data class IndexInput(val name: String) : ScanSource()
 
-enum class FieldType {
-    INTEGER,
-    FLOAT,
-    STRING
+enum class FieldType(val mark: Byte) {
+    INTEGER(1),
+    FLOAT(2),
+    STRING(3)
     ;
+
+    companion object {
+        val MARK_TO_FIELD_TYPE = values().associateBy { it.mark }
+    }
 }
 
 enum class Operator(val token: String) {
@@ -96,11 +98,8 @@ data class PlanDescription(
         val expressionTree: Expression
 )
 
-data class EngineContext(val currentDirectory: String,
-                         val sourceProvider: DatasetReader,
-                         val fieldToIndex: Map<String, ReadOnlyIndex>,
-                         val fieldToType: Map<String, FieldType>,
-                         val fieldToColumnNum: Map<String, Int>
+data class EngineContext(val sourceProvider: DatasetReader,
+                         val fieldToIndex: Map<String, ReadOnlyIndex>
 )
 
 
