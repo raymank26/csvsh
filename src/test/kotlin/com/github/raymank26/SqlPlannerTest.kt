@@ -8,7 +8,7 @@ import kotlin.test.fail
 /**
  * Date: 2019-05-13.
  */
-class SqlPlannerTest : BaseSqlTest() {
+class SqlPlannerTest : SqlTestUtils {
 
     @Test
     fun testEmpty() {

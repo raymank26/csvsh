@@ -6,7 +6,7 @@ import kotlin.test.assertEquals
 /**
  * Date: 2019-05-20.
  */
-class SqlExecutorTest : BaseSqlTest() {
+class SqlExecutorTest : SqlTestUtils {
     private val dataset = InMemoryDatasetReader(
             columnNamesField = listOf("field1", "field2"),
             columnInfoField = mutableMapOf(
@@ -16,7 +16,14 @@ class SqlExecutorTest : BaseSqlTest() {
             datasetRows = listOf(DatasetRow(0, listOf("foobar", "1")), DatasetRow(1, listOf("baz", "10")))
     )
     @Test
-    fun simpleExpression() {
-        assertEquals(1, executeSelect("SELECT * FROM 'a' WHERE field2 = 1", dataset).rows.size)
+    fun simple() {
+        val executeSelect = executeSelect("SELECT field1 FROM 'a' WHERE field2 = 1", dataset)
+        assertEquals(1, executeSelect.rows.size)
+    }
+
+    @Test
+    fun testIn() {
+        val executeSelect = executeSelect("SELECT field1 FROM 'a' WHERE field1 LIKE '%ob%'", dataset)
+        assertEquals(1, executeSelect.rows.size)
     }
 }

@@ -104,7 +104,7 @@ private class SqlPlannerVisitor(private val availableIndexes: List<IndexDescript
         return when (variable.type) {
             "float" -> FloatValue(variable.floatNumber().text.toFloat())
             "integer" -> IntValue(variable.integerNumber().text.toInt())
-            "string" -> StringValue(variable.string().text)
+            "string" -> StringValue(variable.string().text.drop(1).dropLast(1))
             "reference" -> RefValue(variable.reference().text)
             else -> throw RuntimeException("Unable to parse type = ${variable.type}")
         }

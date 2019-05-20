@@ -175,7 +175,7 @@ IDENTIFIER_Q
  ;
 
 IDENTIFIER
- : [A-Z0-9a-z./]+
+ : [A-Z0-9a-z./*%_]+
  ;
 
 WHITESPACE : [ \n] -> skip ;

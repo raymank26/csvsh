@@ -5,7 +5,7 @@ import org.junit.Test
 /**
  * Date: 2019-05-11.
  */
-class SqlGrammarTest : BaseSqlTest() {
+class SqlGrammarTest : SqlTestUtils {
 
     @Test
     fun testSimpleSelect() {
@@ -46,6 +46,4 @@ class SqlGrammarTest : BaseSqlTest() {
     fun testLowercase() {
         testParser("select a from 'b'")
     }
-
-
 }

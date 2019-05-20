@@ -1,16 +1,15 @@
 package com.github.raymank26
 
 import org.junit.Assert
-import java.lang.Exception
 
 /**
  * Date: 2019-05-20.
  */
+private val sqlAstBuilder = SqlAstBuilder()
+private val sqlPlanner = SqlPlanner()
+private val sqlExecutor = SqlExecutor()
 
-open class BaseSqlTest {
-    private val sqlAstBuilder = SqlAstBuilder()
-    private val sqlPlanner = SqlPlanner()
-    private val sqlExecutor = SqlExecutor()
+interface SqlTestUtils {
 
     fun testParser(statement: String, failureExpected: Boolean = false) {
         try {

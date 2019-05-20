@@ -1,7 +1,7 @@
 package com.github.raymank26
 
-import java.lang.RuntimeException
 import java.util.BitSet
+import java.util.regex.Pattern
 
 /**
  * Date: 2019-05-15.
@@ -108,29 +108,31 @@ class SqlExecutor {
         return when (requireNotNull(engineContext.sourceProvider.getColumnInfo()[fieldName]).type) {
             FieldType.INTEGER -> {
                 val fieldValue: Int = columnValue.toInt()
-                val rightInt = (atom.rightVal as IntValue).value
-                checkAtom(atom, fieldValue, rightInt)
+                checkAtom(atom, fieldValue, atom.rightVal) { sqlValue -> (sqlValue as IntValue).value }
             }
             FieldType.FLOAT -> {
                 val fieldValue = columnValue.toFloat()
-                val rightFloat = (atom.rightVal as FloatValue).value
-                checkAtom(atom, fieldValue, rightFloat)
+                checkAtom(atom, fieldValue, atom.rightVal) { sqlValue -> (sqlValue as FloatValue).value }
             }
             FieldType.STRING -> {
-                require(atom.operator == Operator.EQ)
-                columnValue == (atom.rightVal as StringValue).value
+                checkAtom(atom, columnValue, atom.rightVal) { sqlValue -> (sqlValue as StringValue).value }
             }
         }
     }
 
-    private fun <T : Number> checkAtom(atom: ExpressionAtom, fieldValue: Comparable<T>, rightInt: T): Boolean {
+    private fun <T> checkAtom(atom: ExpressionAtom, fieldValue: Comparable<T>, sqlValue: SqlValue, toT: (SqlValue) -> T): Boolean {
         return when (atom.operator) {
-            Operator.LESS_THAN -> fieldValue < rightInt
-            Operator.LESS_EQ_THAN -> fieldValue <= rightInt
-            Operator.GREATER_THAN -> fieldValue > rightInt
-            Operator.GREATER_EQ_THAN -> fieldValue >= rightInt
-            Operator.EQ -> fieldValue == rightInt
-            else -> throw RuntimeException("Operation is not applicable for ints, op = ${atom.operator}")
+            Operator.LESS_THAN -> fieldValue < toT(sqlValue)
+            Operator.LESS_EQ_THAN -> fieldValue <= toT(sqlValue)
+            Operator.GREATER_THAN -> fieldValue > toT(sqlValue)
+            Operator.GREATER_EQ_THAN -> fieldValue >= toT(sqlValue)
+            Operator.EQ -> fieldValue == toT(sqlValue)
+            Operator.IN -> (sqlValue as ListValue).value.any { toT(it) == fieldValue }
+            Operator.LIKE -> {
+                // TODO: actually, SQL pattern matching is a great deal more complicated.
+                val regExValue = (sqlValue as StringValue).value.replace("%", ".*").replace('%', '?')
+                Pattern.compile(regExValue).toRegex().matches(fieldValue as String)
+            }
         }
     }
 
@@ -147,7 +149,7 @@ class SqlExecutor {
 
 private class BitSetEvalMerger(private val atomsToBitSet: Map<ExpressionAtom, BitSet>) : BaseExpressionVisitor<BitSet>() {
     override fun visitAtom(atom: ExpressionAtom): BitSet {
-        return requireNotNull(atomsToBitSet[atom]) {"Unable to find CSV lines for atom" }
+        return atomsToBitSet.getOrDefault(atom, BitSet())
     }
 
     override fun visitNode(node: ExpressionNode): BitSet {
