@@ -1,15 +1,11 @@
 package com.github.raymank26
 
-import org.junit.Assert
 import org.junit.Test
-import java.lang.Exception
 
 /**
  * Date: 2019-05-11.
  */
-class SqlGrammarTest {
-
-    private val sqlParser = SqlAstBuilder()
+class SqlGrammarTest : BaseSqlTest() {
 
     @Test
     fun testSimpleSelect() {
@@ -51,16 +47,5 @@ class SqlGrammarTest {
         testParser("select a from 'b'")
     }
 
-    private fun testParser(statement: String, failureExpected: Boolean = false) {
-        try {
-            sqlParser.parse(statement)
-            if (failureExpected) {
-                Assert.fail("Failure expected, but it passes")
-            }
-        } catch (e: Exception) {
-            if (!failureExpected) {
-                Assert.fail(e.toString())
-            }
-        }
-    }
+
 }

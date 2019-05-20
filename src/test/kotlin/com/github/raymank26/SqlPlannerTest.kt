@@ -8,9 +8,7 @@ import kotlin.test.fail
 /**
  * Date: 2019-05-13.
  */
-class SqlPlannerTest {
-    private val sqlAstBuilder: SqlAstBuilder = SqlAstBuilder()
-    private val sqlPlanner = SqlPlanner()
+class SqlPlannerTest : BaseSqlTest() {
 
     @Test
     fun testEmpty() {
@@ -33,9 +31,5 @@ class SqlPlannerTest {
         assertEquals(2, expBySource.getValue(IndexInput("aIndex")).size)
         assertEquals(1, expBySource.getValue(IndexInput("bIndex")).size)
         assertEquals(1, expBySource.getValue(CsvInput).size)
-    }
-
-    private fun makePlan(sql: String, indexes: List<IndexDescription>): PlanDescription? {
-        return sqlPlanner.makePlan((sqlAstBuilder.parse(sql) as SelectStatement).ctx, indexes)
     }
 }
