@@ -2,23 +2,34 @@ package com.github.raymank26
 
 import com.github.raymank26.sql.SqlBaseVisitor
 import com.github.raymank26.sql.SqlParser
+import java.nio.file.Paths
 
 /**
  * Date: 2019-05-13.
  */
 class SqlPlanner {
 
-    fun makePlan(sqlAst: SqlParser.SelectContext, availableIndexes: List<IndexDescription>): PlanDescription? {
-        val whereExpr = sqlAst.whereExpr() ?: return null
-        val resultPlan = SqlPlannerVisitor(availableIndexes).visit(whereExpr)
-        require(resultPlan != null)
-        return resultPlan
+    fun makePlan(sqlAst: SqlParser.SelectContext, availableIndexes: List<IndexDescription>): SqlPlan {
+        val tablePath = Paths.get(sqlAst.table().IDENTIFIER_Q().text.drop(1).dropLast(1))
+        val sqlWherePlan = sqlAst.whereExpr()?.let { SqlWhereVisitor(availableIndexes).visit(it) }
+        val limit = sqlAst.limitExpr()?.INTEGER()?.text?.toInt()
+        val orderBy = sqlAst.orderByExpr()?.let {
+            val ref = it.reference().IDENTIFIER().text
+            OrderByPlanDescription(ref, it.DESC()?.let { true } ?: false)
+        }
+        val groupByFields: List<String> = sqlAst.groupByExpr()?.reference()?.map { it.IDENTIFIER().text } ?: emptyList()
+        val selectStatements: List<SelectStatementExpr> = if (sqlAst.selectExpr().allColumns() != null) {
+            emptyList()
+        } else {
+            sqlAst.selectExpr().selectColumn().map { SqlSelectColumnVisitor().visit(it) }
+        }
+        return SqlPlan(selectStatements, tablePath, sqlWherePlan, groupByFields, orderBy, limit)
     }
 }
 
-private class SqlPlannerVisitor(private val availableIndexes: List<IndexDescription>) : SqlBaseVisitor<PlanDescription?>() {
+private class SqlWhereVisitor(private val availableIndexes: List<IndexDescription>) : SqlBaseVisitor<WherePlanDescription?>() {
 
-    override fun visitWhereExprAtom(ctx: SqlParser.WhereExprAtomContext): PlanDescription {
+    override fun visitWhereExprAtom(ctx: SqlParser.WhereExprAtomContext): WherePlanDescription {
         var left = parseVariable(ctx.variable(0))
         var right = parseVariable(ctx.variable(1))
         var operator = Operator.TOKEN_TO_OPERATOR[ctx.BOOL_COMP().text]
@@ -47,10 +58,10 @@ private class SqlPlannerVisitor(private val availableIndexes: List<IndexDescript
             else -> throw PlannerException("Left or right expression has to be a CSV field")
         }
         val atom = ExpressionAtom(left, operator, right)
-        return PlanDescription(mutableMapOf(Pair(source, mutableListOf(atom))), atom)
+        return WherePlanDescription(mutableMapOf(Pair(source, mutableListOf(atom))), atom)
     }
 
-    override fun visitWhereExprIn(ctx: SqlParser.WhereExprInContext): PlanDescription {
+    override fun visitWhereExprIn(ctx: SqlParser.WhereExprInContext): WherePlanDescription {
         val field: RefValue = parseVariable(ctx.variable(0)) as? RefValue
                 ?: throw PlannerException("Left variable has to be table field")
 
@@ -70,16 +81,16 @@ private class SqlPlannerVisitor(private val availableIndexes: List<IndexDescript
             variables.add(parsedVariable)
         }
         val atom = ExpressionAtom(field, Operator.IN, ListValue(variables))
-        return PlanDescription(
+        return WherePlanDescription(
                 mutableMapOf(Pair(getSource(field.name), mutableListOf(atom))), atom)
     }
 
-    override fun visitWhereExprBool(ctx: SqlParser.WhereExprBoolContext): PlanDescription {
+    override fun visitWhereExprBool(ctx: SqlParser.WhereExprBoolContext): WherePlanDescription {
         if (ctx.childCount != 3) {
             throw RuntimeException("Child count != 3")
         }
-        val left: PlanDescription? = visit(ctx.getChild(0))
-        val right: PlanDescription? = visit(ctx.getChild(2))
+        val left: WherePlanDescription? = visit(ctx.getChild(0))
+        val right: WherePlanDescription? = visit(ctx.getChild(2))
         if (left == null || right == null) {
             throw RuntimeException("Some null")
         }
@@ -89,10 +100,10 @@ private class SqlPlannerVisitor(private val availableIndexes: List<IndexDescript
             else -> throw RuntimeException("Unable to parse operator expression")
         }
         val expression = ExpressionNode(left.expressionTree, operator, right.expressionTree)
-        return PlanDescription(mergeAtomPlans(left.expressionsBySource, right.expressionsBySource), expression)
+        return WherePlanDescription(mergeAtomPlans(left.expressionsBySource, right.expressionsBySource), expression)
     }
 
-    override fun aggregateResult(aggregate: PlanDescription?, nextResult: PlanDescription?): PlanDescription? {
+    override fun aggregateResult(aggregate: WherePlanDescription?, nextResult: WherePlanDescription?): WherePlanDescription? {
         return when {
             aggregate != null -> aggregate
             nextResult != null -> nextResult
@@ -132,5 +143,15 @@ private class SqlPlannerVisitor(private val availableIndexes: List<IndexDescript
             }
         }
         return result
+    }
+}
+
+private class SqlSelectColumnVisitor : SqlBaseVisitor<SelectStatementExpr>() {
+    override fun visitSelectColumnPlain(ctx: SqlParser.SelectColumnPlainContext): SelectStatementExpr {
+        return SelectFieldExpr(ctx.reference().IDENTIFIER().text)
+    }
+
+    override fun visitSelectColumnAgg(ctx: SqlParser.SelectColumnAggContext): SelectStatementExpr {
+        return AggSelectExpr(ctx.AGG().text, ctx.reference().text)
     }
 }

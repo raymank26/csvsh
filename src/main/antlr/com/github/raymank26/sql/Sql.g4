@@ -11,11 +11,15 @@ statement
  ;
 
 select
- : SELECT selectExpr FROM table (WHERE whereExpr)? (ORDER_BY orderByExpr)? (LIMIT limitExpr)?
+ : SELECT selectExpr FROM table (GROUP_BY groupByExpr)? (WHERE whereExpr)? (ORDER_BY orderByExpr)? (LIMIT limitExpr)?
+ ;
+
+groupByExpr
+ : reference (COMMA reference)*
  ;
 
 orderByExpr
- : reference
+ : reference DESC?
  ;
 
 limitExpr
@@ -43,8 +47,8 @@ whereExpr
  ;
 
 selectColumn
- : variable
- | variable LEFT_PAR variable RIGHT_PAR
+ : reference #selectColumnPlain
+ | AGG LEFT_PAR reference RIGHT_PAR #selectColumnAgg
  ;
 
 variable locals [String type]
@@ -83,7 +87,7 @@ indexName
  ;
 
 INTEGER
- : [0-5]+
+ : [0-9]+
  ;
 
 fragment EXPONENT : ('e'|'E') ('+'|'-')? ('0'..'9')+ ;
@@ -126,6 +130,10 @@ BOOL_COMP
  : '<' | '>' | '<>' | 'LIKE' | '='
  ;
 
+AGG
+ : 'MAX' | 'MIN'
+ ;
+
 BOOL_COMP_IN
  : 'NOT IN' | 'IN'
  ;
@@ -144,6 +152,14 @@ WHERE
 
 ORDER_BY
  : 'ORDER BY'
+ ;
+
+DESC
+ : 'DESC'
+ ;
+
+GROUP_BY
+ : 'GROUP BY'
  ;
 
 LIMIT

@@ -8,13 +8,14 @@ import java.util.regex.Pattern
  */
 class SqlExecutor {
 
-    fun execute(engineContext: EngineContext, planDescription: PlanDescription?): DatasetResult {
-        if (planDescription == null) {
-            return readRows(engineContext, null)
-        }
-        val expressionToLines = executeAtomExpressions(engineContext, planDescription.expressionsBySource)
-        val resultLines = BitSetEvalMerger(expressionToLines).visitExpression(planDescription.expressionTree)
-        return readRows(engineContext, resultLines)
+    fun execute(engineContext: EngineContext, planDescription: SqlPlan): DatasetResult {
+//        if (planDescription == null) {
+//            return readRows(engineContext, null)
+//        }
+//        val expressionToLines = executeAtomExpressions(engineContext, planDescription.)
+//        val resultLines = BitSetEvalMerger(expressionToLines).visitExpression(planDescription.expressionTree)
+//        return readRows(engineContext, resultLines)
+        return TODO()
     }
 
     private fun executeAtomExpressions(engineContext: EngineContext, expressionsBySource: Map<ScanSource, List<ExpressionAtom>>): Map<ExpressionAtom, BitSet> {

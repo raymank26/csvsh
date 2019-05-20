@@ -24,7 +24,7 @@ interface SqlTestUtils {
         }
     }
 
-    fun makePlan(sql: String, indexes: List<IndexDescription>): PlanDescription? {
+    fun makePlan(sql: String, indexes: List<IndexDescription>): SqlPlan {
         return sqlPlanner.makePlan((sqlAstBuilder.parse(sql) as SelectStatement).ctx, indexes)
     }
 

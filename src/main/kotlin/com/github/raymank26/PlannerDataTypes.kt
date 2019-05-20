@@ -1,5 +1,7 @@
 package com.github.raymank26
 
+import java.nio.file.Path
+
 /**
  * Date: 2019-05-13.
  */
@@ -93,7 +95,26 @@ class PlannerException(msg: String) : Exception(msg)
 class SyntaxException(msg: String) : Exception(msg)
 class ExecutorException(msg: String) : Exception(msg)
 
-data class PlanDescription(
+sealed class SelectStatementExpr
+
+data class AggSelectExpr(val type: String, val fieldName: String) : SelectStatementExpr()
+data class SelectFieldExpr(val fieldName: String) : SelectStatementExpr()
+
+data class SqlPlan(
+        val selectStatements: List<SelectStatementExpr>,
+        val tablePath: Path,
+        val wherePlanDescription: WherePlanDescription?,
+        val groupByFields: List<String>,
+        val orderByPlanDescription: OrderByPlanDescription?,
+        val limit: Int?
+)
+
+data class OrderByPlanDescription(
+        val field: String,
+        val desc: Boolean
+)
+
+data class WherePlanDescription(
         val expressionsBySource: Map<ScanSource, List<ExpressionAtom>>,
         val expressionTree: Expression
 )
