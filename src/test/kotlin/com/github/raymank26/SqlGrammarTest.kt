@@ -24,7 +24,7 @@ class SqlGrammarTest : SqlTestUtils {
 
     @Test
     fun testSelectWithWhere3() {
-        testParser("SELECT '5' FROM 'a' WHERE (a IN (1,2,3) AND 5 = 5) OR 4 = 4")
+        testParser("SELECT * FROM 'a' WHERE (a IN (1,2,3) AND 5 = 5) OR 4 = 4")
     }
 
     @Test

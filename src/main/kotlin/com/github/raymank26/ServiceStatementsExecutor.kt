@@ -65,6 +65,10 @@ class ServiceStatementsExecutor(private val csvFormat: CSVFormat) {
         }
     }
 
+    fun createCsvDatasetReaderFactory(): DatasetReaderFactory {
+        return TODO()
+    }
+
     fun loadIndexes(csvPath: Path): List<IndexDescriptionAndPath> {
         val indexFile = csvPathToIndexFile(csvPath)
         if (!indexFile.exists()) {
@@ -76,7 +80,7 @@ class ServiceStatementsExecutor(private val csvFormat: CSVFormat) {
             val (indexName, fieldName, fieldTypeMark) = name.split("|")
             val fieldType = FieldType.MARK_TO_FIELD_TYPE[fieldTypeMark.toByte()] ?:
                 throw RuntimeException("Unable to get fieldType")
-            val readOnlyIndex: ReadOnlyIndex = when (fieldType) {
+            val readOnlyIndex: ReadOnlyIndex<*> = when (fieldType) {
                 FieldType.INTEGER -> {
                     val tm = db.treeMap(name, Serializer.INTEGER, Serializer.INT_ARRAY).open()
                     MapDBReadonlyIndex(tm, FieldType.INTEGER)

@@ -1,6 +1,5 @@
 package com.github.raymank26
 
-import java.util.BitSet
 import java.util.regex.Pattern
 
 /**
@@ -8,23 +7,30 @@ import java.util.regex.Pattern
  */
 class SqlExecutor {
 
-    fun execute(engineContext: EngineContext, planDescription: SqlPlan): DatasetResult {
-//        if (planDescription == null) {
-//            return readRows(engineContext, null)
-//        }
-//        val expressionToLines = executeAtomExpressions(engineContext, planDescription.)
-//        val resultLines = BitSetEvalMerger(expressionToLines).visitExpression(planDescription.expressionTree)
-//        return readRows(engineContext, resultLines)
-        return TODO()
+    fun execute(sqlPlan: SqlPlan): DatasetResult {
+        if (sqlPlan.wherePlanDescription != null) {
+            val expressionToLines = executeAtomExpressions(sqlPlan)
+            val resultLines = ExpressionTreeEvaluator(expressionToLines).visitExpression(sqlPlan.wherePlanDescription.expressionTree)
+            val rows = readRows(sqlPlan, resultLines)
+            if (sqlPlan.groupByFields != null) {
+            }
+            TODO()
+        } else {
+            TODO()
+        }
     }
 
-    private fun executeAtomExpressions(engineContext: EngineContext, expressionsBySource: Map<ScanSource, List<ExpressionAtom>>): Map<ExpressionAtom, BitSet> {
-        val result = mutableMapOf<ExpressionAtom, BitSet>()
-        for ((scanSource, atoms) in expressionsBySource) {
+    private fun executeAtomExpressions(sqlPlan: SqlPlan): Map<ExpressionAtom, Set<Int>> {
+        if (sqlPlan.wherePlanDescription == null) {
+            return emptyMap()
+        }
+
+        val result = mutableMapOf<ExpressionAtom, Set<Int>>()
+        for ((scanSource, atoms) in sqlPlan.wherePlanDescription.expressionsBySource) {
             val exp = when (scanSource) {
-                is CsvInput -> evalOverCsv(engineContext, atoms)
+                is CsvInput -> evalOverCsv(sqlPlan, atoms)
                 is IndexInput -> {
-                    evalOverIndex(engineContext, scanSource.name, atoms)
+                    evalOverIndex(sqlPlan, scanSource.name, atoms)
                 }
             }
             result.putAll(exp)
@@ -32,16 +38,16 @@ class SqlExecutor {
         return result
     }
 
-    private fun evalOverIndex(engineContext: EngineContext, indexName: String, expressions: List<ExpressionAtom>): Map<ExpressionAtom, BitSet> {
-        val index = requireNotNull(engineContext.fieldToIndex[indexName]) { "Unable to find index for name = $indexName" }
+    private fun evalOverIndex(sqlPlan: SqlPlan, indexName: String, expressions: List<ExpressionAtom>): Map<ExpressionAtom, Set<Int>> {
+        val index = requireNotNull(sqlPlan.datasetReader.availableIndexes().find { it.description.name == indexName }?.indexContent) { "Unable to find index for name = $indexName" }
         val fieldType = index.getType()
 
-        val result = mutableMapOf<ExpressionAtom, BitSet>()
+        val result = mutableMapOf<ExpressionAtom, Set<Int>>()
         for (expression in expressions) {
-            val rowsBitSet = when (fieldType) {
+            val rowsFound = when (fieldType) {
                 FieldType.INTEGER -> {
                     val right = (expression.rightVal as IntValue).value
-                    @Suppress("UNCHECKED_CAST") val integerIndex = index as ReadOnlyIndexNumber<Int>
+                    @Suppress("UNCHECKED_CAST") val integerIndex = index as ReadOnlyIndex<Int>
                     when (val op = expression.operator) {
                         Operator.LESS_THAN -> integerIndex.lessThan(right)
                         Operator.LESS_EQ_THAN -> integerIndex.lessThanEq(right)
@@ -53,7 +59,7 @@ class SqlExecutor {
                 }
                 FieldType.FLOAT -> {
                     val right = (expression.rightVal as FloatValue).value
-                    @Suppress("UNCHECKED_CAST") val floatIndex = index as ReadOnlyIndexNumber<Float>
+                    @Suppress("UNCHECKED_CAST") val floatIndex = index as ReadOnlyIndex<Float>
                     when (val op = expression.operator) {
                         Operator.LESS_THAN -> floatIndex.lessThan(right)
                         Operator.LESS_EQ_THAN -> floatIndex.lessThanEq(right)
@@ -65,7 +71,7 @@ class SqlExecutor {
                 }
                 FieldType.STRING -> {
                     val right = (expression.rightVal as StringValue).value
-                    @Suppress("UNCHECKED_CAST") val integerIndex = index as ReadOnlyIndexNumber<String>
+                    @Suppress("UNCHECKED_CAST") val integerIndex = index as ReadOnlyIndex<String>
                     when (val op = expression.operator) {
                         Operator.LESS_THAN -> integerIndex.lessThan(right)
                         Operator.LESS_EQ_THAN -> integerIndex.lessThanEq(right)
@@ -76,21 +82,21 @@ class SqlExecutor {
                     }
                 }
             }
-            result[expression] = rowsBitSet
+            result[expression] = rowsFound
         }
         return result
     }
 
-    private fun evalOverCsv(engineContext: EngineContext, atoms: List<ExpressionAtom>): Map<ExpressionAtom, BitSet> {
-        val result = mutableMapOf<ExpressionAtom, BitSet>()
-        engineContext.sourceProvider.read({ row: DatasetRow ->
+    private fun evalOverCsv(sqlPlan: SqlPlan, atoms: List<ExpressionAtom>): Map<ExpressionAtom, Set<Int>> {
+        val result = mutableMapOf<ExpressionAtom, MutableSet<Int>>()
+        sqlPlan.datasetReader.read({ row: DatasetRow ->
             for (expression in atoms) {
-                if (isRowApplicable(engineContext, row, expression)) {
-                    result.compute(expression) {_, bs ->
+                if (isRowApplicable(sqlPlan, row, expression)) {
+                    result.compute(expression) { _, bs ->
                         return@compute if (bs == null) {
-                            BitSet().also { it.set(row.rowNum) }
+                            mutableSetOf(row.rowNum)
                         } else {
-                            bs.set(row.rowNum)
+                            bs.add(row.rowNum)
                             bs
                         }
                     }
@@ -100,13 +106,13 @@ class SqlExecutor {
         return result
     }
 
-    private fun isRowApplicable(engineContext: EngineContext, row: DatasetRow, atom: ExpressionAtom): Boolean {
+    private fun isRowApplicable(sqlPlan: SqlPlan, row: DatasetRow, atom: ExpressionAtom): Boolean {
         val fieldName = (atom.leftVal as RefValue).name
-        val columnNum = engineContext.sourceProvider.getColumnInfo()[fieldName]?.position
+        val columnNum = sqlPlan.datasetReader.getColumnInfo()[fieldName]?.position
                 ?: throw RuntimeException("Not found")
         val columnValue = row.columns[columnNum]
 
-        return when (requireNotNull(engineContext.sourceProvider.getColumnInfo()[fieldName]).type) {
+        return when (requireNotNull(sqlPlan.datasetReader.getColumnInfo()[fieldName]).type) {
             FieldType.INTEGER -> {
                 val fieldValue: Int = columnValue.toInt()
                 checkAtom(atom, fieldValue, atom.rightVal) { sqlValue -> (sqlValue as IntValue).value }
@@ -137,30 +143,29 @@ class SqlExecutor {
         }
     }
 
-    private fun readRows(engineContext: EngineContext, rowIndexes: BitSet?): DatasetResult {
+    private fun readRows(sqlPlan: SqlPlan, rowIndexes: Set<Int>?): DatasetResult {
         val rows = mutableListOf<DatasetRow>()
-        engineContext.sourceProvider.read({ csvRow: DatasetRow ->
-            if (rowIndexes == null || rowIndexes[csvRow.rowNum]) {
+        sqlPlan.datasetReader.read({ csvRow: DatasetRow ->
+            if (rowIndexes == null || rowIndexes.contains(csvRow.rowNum)) {
                 rows.add(csvRow)
             }
         }, null)
-        return DatasetResult(engineContext.sourceProvider.getColumnNames(), rows)
+        return DatasetResult(sqlPlan.datasetReader.getColumnNames(), rows)
     }
 }
 
-private class BitSetEvalMerger(private val atomsToBitSet: Map<ExpressionAtom, BitSet>) : BaseExpressionVisitor<BitSet>() {
-    override fun visitAtom(atom: ExpressionAtom): BitSet {
-        return atomsToBitSet.getOrDefault(atom, BitSet())
+private class ExpressionTreeEvaluator(private val atomsToBitSet: Map<ExpressionAtom, Set<Int>>) : BaseExpressionVisitor<Set<Int>>() {
+    override fun visitAtom(atom: ExpressionAtom): Set<Int> {
+        return atomsToBitSet.getOrDefault(atom, emptySet())
     }
 
-    override fun visitNode(node: ExpressionNode): BitSet {
+    override fun visitNode(node: ExpressionNode): Set<Int> {
         val leftLines = requireNotNull(node.left.accept(this), { "Left lines is null" })
         val rightLines = requireNotNull(node.right.accept(this), { "Right lines is null" })
 
-        when (node.operator) {
-            ExpressionOperator.AND -> leftLines.and(rightLines)
-            ExpressionOperator.OR -> leftLines.or(rightLines)
+        return when (node.operator) {
+            ExpressionOperator.AND -> leftLines.intersect(rightLines)
+            ExpressionOperator.OR -> leftLines.union(rightLines)
         }
-        return leftLines
     }
 }

@@ -1,13 +1,11 @@
 package com.github.raymank26
 
-import java.nio.file.Path
-
 /**
  * Date: 2019-05-13.
  */
 data class IndexDescription(val name: String, val fieldName: String)
 
-data class IndexDescriptionAndPath(val description: IndexDescription, val indexContent: ReadOnlyIndex)
+data class IndexDescriptionAndPath(val description: IndexDescription, val indexContent: ReadOnlyIndex<*>)
 
 sealed class ScanSource
 object CsvInput : ScanSource()
@@ -102,7 +100,7 @@ data class SelectFieldExpr(val fieldName: String) : SelectStatementExpr()
 
 data class SqlPlan(
         val selectStatements: List<SelectStatementExpr>,
-        val tablePath: Path,
+        val datasetReader: DatasetReader,
         val wherePlanDescription: WherePlanDescription?,
         val groupByFields: List<String>,
         val orderByPlanDescription: OrderByPlanDescription?,
@@ -119,8 +117,7 @@ data class WherePlanDescription(
         val expressionTree: Expression
 )
 
-data class EngineContext(val sourceProvider: DatasetReader,
-                         val fieldToIndex: Map<String, ReadOnlyIndex>
+data class EngineContext(val fieldToIndex: Map<String, ReadOnlyIndex<*>>
 )
 
 

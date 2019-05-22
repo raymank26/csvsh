@@ -1,8 +1,6 @@
 package com.github.raymank26
 
 import org.apache.commons.csv.CSVFormat
-import java.nio.file.Path
-import java.nio.file.Paths
 
 /**
  * Date: 2019-05-13.
@@ -32,24 +30,12 @@ class ExecutorEngine {
                 TextResponse(description.toString())
             }
             is SelectStatement -> {
-                val csvPath: Path = SqlTableVisitor().visit(parsedStatement.ctx)?.let { Paths.get(it) }
-                        ?: throw RuntimeException("Table is not defined")
-                val indexes = ssExecutor.loadIndexes(csvPath)
-
-                try {
-                    val planDescriptor = sqlPlanner.makePlan(parsedStatement.ctx, indexes.map { it.description })
-                    val fieldToIndex: Map<String, ReadOnlyIndex> = indexes
-                            .asSequence()
-                            .map { id -> Pair(id.description.fieldName, id.indexContent) }
-                            .toMap()
-                    val result = sqlExecutor.execute(EngineContext(CsvDatasetReader(CSVFormat.RFC4180, csvPath),
-                            fieldToIndex), planDescriptor)
-                    TextResponse(result.toString())
-                } finally {
-                    indexes.forEach {
-                        it.indexContent.use {  }
-                    }
+                val csvFactory = ssExecutor.createCsvDatasetReaderFactory()
+                val planDescriptor = sqlPlanner.createPlan(parsedStatement.ctx, csvFactory)
+                val result = planDescriptor.datasetReader.use {
+                    sqlExecutor.execute(planDescriptor)
                 }
+                TextResponse(result.toString())
             }
         }
     }
@@ -57,7 +43,7 @@ class ExecutorEngine {
 
 sealed class ExecutorResponse
 
-data class TextResponse(val value: String): ExecutorResponse()
+data class TextResponse(val value: String) : ExecutorResponse()
 
 object VoidResponse : ExecutorResponse()
 

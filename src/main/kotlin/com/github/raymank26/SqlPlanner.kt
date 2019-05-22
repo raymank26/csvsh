@@ -9,25 +9,39 @@ import java.nio.file.Paths
  */
 class SqlPlanner {
 
-    fun makePlan(sqlAst: SqlParser.SelectContext, availableIndexes: List<IndexDescription>): SqlPlan {
+    fun createPlan(sqlAst: SqlParser.SelectContext, datasetReaderFactory: DatasetReaderFactory): SqlPlan {
         val tablePath = Paths.get(sqlAst.table().IDENTIFIER_Q().text.drop(1).dropLast(1))
-        val sqlWherePlan = sqlAst.whereExpr()?.let { SqlWhereVisitor(availableIndexes).visit(it) }
+        val reader = datasetReaderFactory.getReader(tablePath)
+                ?: throw PlannerException("Unable to find input for path = $tablePath")
+        val sqlWherePlan = sqlAst.whereExpr()?.let { SqlWhereVisitor(reader.availableIndexes()).visit(it) }
         val limit = sqlAst.limitExpr()?.INTEGER()?.text?.toInt()
         val orderBy = sqlAst.orderByExpr()?.let {
             val ref = it.reference().IDENTIFIER().text
             OrderByPlanDescription(ref, it.DESC()?.let { true } ?: false)
         }
-        val groupByFields: List<String> = sqlAst.groupByExpr()?.reference()?.map { it.IDENTIFIER().text } ?: emptyList()
         val selectStatements: List<SelectStatementExpr> = if (sqlAst.selectExpr().allColumns() != null) {
             emptyList()
         } else {
             sqlAst.selectExpr().selectColumn().map { SqlSelectColumnVisitor().visit(it) }
         }
-        return SqlPlan(selectStatements, tablePath, sqlWherePlan, groupByFields, orderBy, limit)
+        val groupByFields: List<String> = getGroupByExpression(sqlAst, selectStatements)
+        return SqlPlan(selectStatements, reader, sqlWherePlan, groupByFields, orderBy, limit)
+    }
+
+    private fun getGroupByExpression(sqlAst: SqlParser.SelectContext, selectStatements: List<SelectStatementExpr>): List<String> {
+        val groupedFields: List<String> = sqlAst.groupByExpr()?.reference()?.map { it.IDENTIFIER().text } ?: emptyList()
+        if (groupedFields.isEmpty() || selectStatements.isEmpty()) {
+            return groupedFields
+        }
+        val selectPlainFieldNames = selectStatements.mapNotNull { (it as? SelectFieldExpr)?.fieldName }
+        if (selectPlainFieldNames.toSet() != groupedFields.toSet()) {
+            throw PlannerException("Unable to select not grouped fields")
+        }
+        return groupedFields
     }
 }
 
-private class SqlWhereVisitor(private val availableIndexes: List<IndexDescription>) : SqlBaseVisitor<WherePlanDescription?>() {
+private class SqlWhereVisitor(private val availableIndexes: List<IndexDescriptionAndPath>) : SqlBaseVisitor<WherePlanDescription?>() {
 
     override fun visitWhereExprAtom(ctx: SqlParser.WhereExprAtomContext): WherePlanDescription {
         var left = parseVariable(ctx.variable(0))
@@ -122,7 +136,8 @@ private class SqlWhereVisitor(private val availableIndexes: List<IndexDescriptio
     }
 
     private fun getSource(fieldName: String): ScanSource {
-        return availableIndexes.find { it.fieldName == fieldName }?.let { IndexInput(it.name) } ?: CsvInput
+        return availableIndexes.find { it.description.fieldName == fieldName }?.let { IndexInput(it.description.name) }
+                ?: CsvInput
     }
 
     private fun mergeAtomPlans(left: Map<ScanSource, List<ExpressionAtom>>,
