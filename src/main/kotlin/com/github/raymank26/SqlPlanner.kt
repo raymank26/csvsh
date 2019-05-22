@@ -30,8 +30,11 @@ class SqlPlanner {
 
     private fun getGroupByExpression(sqlAst: SqlParser.SelectContext, selectStatements: List<SelectStatementExpr>): List<String> {
         val groupedFields: List<String> = sqlAst.groupByExpr()?.reference()?.map { it.IDENTIFIER().text } ?: emptyList()
-        if (groupedFields.isEmpty() || selectStatements.isEmpty()) {
+        if (groupedFields.isEmpty()) {
             return groupedFields
+        }
+        if (selectStatements.isEmpty()) {
+            throw PlannerException("Unable to select not grouped fields")
         }
         val selectPlainFieldNames = selectStatements.mapNotNull { (it as? SelectFieldExpr)?.fieldName }
         if (selectPlainFieldNames.toSet() != groupedFields.toSet()) {

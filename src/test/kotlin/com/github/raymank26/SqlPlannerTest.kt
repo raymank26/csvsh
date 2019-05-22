@@ -40,11 +40,16 @@ class SqlPlannerTest : SqlTestUtils {
 
     @Test
     fun testGroupBy() {
-        makePlan("SELECT a,b,max(c) FROM './a' GROUP BY a,b")
+        makePlan("SELECT a,b,MAX(c) FROM './a' GROUP BY a,b")
     }
 
     @Test
-    fun testGroupByFailure() {
+    fun testGroupByFailure1() {
         testFailure { makePlan("SELECT a,b,c FROM './a' GROUP BY a,b") }
+    }
+
+    @Test
+    fun testGroupByFailure2() {
+        testFailure { makePlan("SELECT * FROM './a' GROUP BY a") }
     }
 }
