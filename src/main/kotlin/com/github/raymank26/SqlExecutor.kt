@@ -12,7 +12,7 @@ class SqlExecutor {
             val expressionToLines = executeAtomExpressions(sqlPlan)
             val resultLines = ExpressionTreeEvaluator(expressionToLines).visitExpression(sqlPlan.wherePlanDescription.expressionTree)
             val rows = readRows(sqlPlan, resultLines)
-            if (sqlPlan.groupByFields != null) {
+            if (sqlPlan.groupByFields.isNotEmpty()) {
             }
             TODO()
         } else {

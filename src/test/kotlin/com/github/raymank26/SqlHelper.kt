@@ -1,6 +1,5 @@
 package com.github.raymank26
 
-import org.junit.Assert
 import kotlin.test.fail
 
 /**
@@ -32,17 +31,8 @@ interface SqlTestUtils {
         return datasetFactory
     }
 
-    fun testParser(statement: String, failureExpected: Boolean = false) {
-        try {
-            sqlAstBuilder.parse(statement)
-            if (failureExpected) {
-                Assert.fail("Failure expected, but it passes")
-            }
-        } catch (e: Exception) {
-            if (!failureExpected) {
-                Assert.fail(e.toString())
-            }
-        }
+    fun testParser(statement: String) {
+        sqlAstBuilder.parse(statement)
     }
 
     fun makePlan(sql: String, datasetReaderFactory: DatasetReaderFactory = getDefaultDatasetFactory()): SqlPlan {
@@ -59,7 +49,7 @@ interface SqlTestUtils {
         try {
             r()
             fail("Passed function has been executed normally, but failure has been expected")
-        } catch (e: Exception) {
+        } catch (_: Exception) {
         }
     }
 }

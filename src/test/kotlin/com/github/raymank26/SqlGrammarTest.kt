@@ -39,7 +39,9 @@ class SqlGrammarTest : SqlTestUtils {
 
     @Test
     fun testFailure() {
-        testParser("select a", true)
+        testFailure {
+            testParser("select a")
+        }
     }
 
     @Test
