@@ -40,7 +40,7 @@ class SqlPlannerTest : SqlTestUtils {
 
     @Test
     fun testGroupBy() {
-        makePlan("SELECT a,b,MAX(c) FROM './a' GROUP BY a,b")
+        makePlan("SELECT b,a,MAX(c) FROM './a' GROUP BY a,b")
     }
 
     @Test
