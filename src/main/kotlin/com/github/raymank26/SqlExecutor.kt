@@ -159,26 +159,25 @@ class SqlExecutor {
 
     private fun applyGroupBy(sqlPlan: SqlPlan, rows: DatasetResult): DatasetResult {
         val groupByBuckets = mutableMapOf<List<String>, List<AggregateFunction<Any, Any>>>()
-        val indexedAggStatements = sqlPlan.selectStatements.mapNotNull { it as? AggSelectExpr }.withIndex()
+        val indexedAggStatements = sqlPlan.selectStatements.mapNotNull { it as? AggSelectExpr }
 
         for (row in rows.rows) {
             val bucketDesc = sqlPlan.groupByFields.map { row.getCell(it) ?: fieldNotFound(it) }
             groupByBuckets.compute(bucketDesc) { _, prev ->
                 if (prev != null) {
-                    for ((i, aggStatement) in indexedAggStatements) {
+                    for ((i, aggStatement) in indexedAggStatements.withIndex()) {
                         prev[i].process(row.getCell(aggStatement.fieldName)!!)
                     }
                     prev
                 } else {
-                    val r = Array<AggregateFunction<Any, Any>?>(5) { null }
-                    for ((i, aggStatement) in indexedAggStatements) {
+                    Array(indexedAggStatements.size) { i ->
+                        val aggStatement = indexedAggStatements[i]
                         val cellType = row.getCellType(aggStatement.fieldName)
                         val agg = AGGREGATES_MAPPING[Pair(aggStatement.type, cellType)]
                                 ?: throw PlannerException("Unable to execute agg of type = ${aggStatement.fieldName} and column type = $cellType")
                         agg.process(row.getCellTyped(aggStatement.fieldName)!!)
-                        r[i] = agg
-                    }
-                    r.filterNotNull()
+                        agg
+                    }.toList()
                 }
             }
         }
