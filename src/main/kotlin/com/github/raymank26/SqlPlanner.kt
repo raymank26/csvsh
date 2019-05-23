@@ -60,11 +60,10 @@ private class SqlWhereVisitor(private val availableIndexes: List<IndexDescriptio
         val source: ScanSource
         when {
             left is RefValue && right !is RefValue -> {
-                source = getSource(left.name)
+                source = getSource(left.name, operator)
             }
             right is RefValue && left !is RefValue -> {
-                source = getSource(right.name)
-                val temp = left
+                val temp: SqlValue = left
                 left = right
                 right = temp
                 operator = when (operator) {
@@ -76,6 +75,7 @@ private class SqlWhereVisitor(private val availableIndexes: List<IndexDescriptio
                     Operator.LESS_EQ_THAN -> Operator.GREATER_EQ_THAN
                     Operator.GREATER_EQ_THAN -> Operator.LESS_EQ_THAN
                 }
+                source = getSource(left.name, operator)
             }
             else -> throw PlannerException("Left or right expression has to be a CSV field")
         }
@@ -104,7 +104,7 @@ private class SqlWhereVisitor(private val availableIndexes: List<IndexDescriptio
         }
         val atom = ExpressionAtom(field, Operator.IN, ListValue(variables))
         return WherePlanDescription(
-                mutableMapOf(Pair(getSource(field.name), mutableListOf(atom))), atom)
+                mutableMapOf(Pair(getSource(field.name, Operator.IN), mutableListOf(atom))), atom)
     }
 
     override fun visitWhereExprBool(ctx: SqlParser.WhereExprBoolContext): WherePlanDescription {
@@ -143,7 +143,10 @@ private class SqlWhereVisitor(private val availableIndexes: List<IndexDescriptio
         }
     }
 
-    private fun getSource(fieldName: String): ScanSource {
+    private fun getSource(fieldName: String, operator: Operator): ScanSource {
+        if (operator == Operator.LIKE) {
+            return CsvInput
+        }
         return availableIndexes.find { it.description.fieldName == fieldName }?.let { IndexInput(it.description.name) }
                 ?: CsvInput
     }

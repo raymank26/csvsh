@@ -10,13 +10,13 @@ class SqlExecutorTest : SqlTestUtils {
 
     @Test
     fun simple() {
-        val executeSelect = executeSelect("SELECT field1 FROM 'a' WHERE field2 = 1", getDefaultDatasetFactory())
+        val executeSelect = executeSelect("SELECT a FROM 'a' WHERE b = 1", getDefaultDatasetFactory())
         assertEquals(1, executeSelect.rows.size)
     }
 
     @Test
     fun testIn() {
-        val executeSelect = executeSelect("SELECT field1 FROM 'a' WHERE field1 LIKE '%ob%'", getDefaultDatasetFactory())
+        val executeSelect = executeSelect("SELECT a FROM 'a' WHERE a LIKE '%ob%'", getDefaultDatasetFactory())
         assertEquals(1, executeSelect.rows.size)
     }
 }

@@ -30,7 +30,7 @@ class InMemoryEmptyIndex<T>(private val fieldType: FieldType) : ReadOnlyIndex<T>
         return emptySet()
     }
 
-    override fun inRange(value: T, list: List<T>): Set<Int> {
+    override fun inRange(list: List<T>): Set<Int> {
         return emptySet()
     }
 

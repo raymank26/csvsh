@@ -9,7 +9,7 @@ interface ReadOnlyIndex<T> : AutoCloseable {
     fun lessThan(to: T): Set<Int>
     fun lessThanEq(toInclusive: T): Set<Int>
     fun eq(value: T): Set<Int>
-    fun inRange(value: T, list: List<T>): Set<Int>
+    fun inRange(list: List<T>): Set<Int>
     fun getType(): FieldType
 }
 
@@ -40,7 +40,7 @@ class MapDBReadonlyIndex<T>(
         return bTreeMap[value]?.toSet() ?: emptySet()
     }
 
-    override fun inRange(value: T, list: List<T>): Set<Int> {
+    override fun inRange(list: List<T>): Set<Int> {
         val bs = mutableSetOf<Int>()
         for (elem in list) {
             bTreeMap[elem]?.forEach { rowNum ->

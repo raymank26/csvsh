@@ -9,10 +9,11 @@ private val sqlAstBuilder = SqlAstBuilder()
 private val sqlPlanner = SqlPlanner()
 private val sqlExecutor = SqlExecutor()
 
-private val availableIndexes = listOf(
-        IndexDescriptionAndPath(IndexDescription(name = "aIndex", fieldName = "a"), InMemoryEmptyIndex<String>(FieldType.STRING)),
-        IndexDescriptionAndPath(IndexDescription(name = "bIndex", fieldName = "b"), InMemoryEmptyIndex<Int>(FieldType.INTEGER))
-)
+//private val availableIndexes = listOf(
+//        IndexDescriptionAndPath(IndexDescription(name = "aIndex", fieldName = "a"), InMemoryEmptyIndex<String>(FieldType.STRING)),
+//        IndexDescriptionAndPath(IndexDescription(name = "bIndex", fieldName = "b"), InMemoryEmptyIndex<Int>(FieldType.INTEGER))
+//)
+private val availableIndexes = emptyList<IndexDescriptionAndPath>()
 
 private val columnInfos = listOf(
         ColumnInfo(FieldType.STRING, "a", 0),
@@ -43,8 +44,9 @@ interface SqlTestUtils {
 
     fun executeSelect(sql: String, datasetReaderFactory: DatasetReaderFactory): DatasetResult {
         val plan = makePlan(sql, datasetReaderFactory)
-        return TODO()
-//        return sqlExecutor.execute(EngineContext(TODO(), emptyMap()), plan)
+        return plan.datasetReader.use {
+            sqlExecutor.execute(plan)
+        }
     }
 
     fun testFailure(r: () -> Unit) {
