@@ -45,7 +45,7 @@ class InMemoryEmptyIndex<T>(private val fieldType: FieldType) : ReadOnlyIndex<T>
 /**
  * Date: 2019-05-20.
  */
-class InMemoryDatasetReader(private val columnInfoField: Map<String, ColumnInfo>,
+class InMemoryDatasetReader(private val columnInfoField: List<ColumnInfo>,
                             private val datasetRows: List<DatasetRow>,
                             private val availableIndexes: List<IndexDescriptionAndPath>) : DatasetReader {
     override fun close() {
@@ -65,7 +65,7 @@ class InMemoryDatasetReader(private val columnInfoField: Map<String, ColumnInfo>
         }.forEach(handle)
     }
 
-    override fun getColumnInfo(): Map<String, ColumnInfo> {
+    override fun getColumnInfo(): List<ColumnInfo> {
         return columnInfoField
     }
 }

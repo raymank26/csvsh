@@ -14,12 +14,14 @@ private val availableIndexes = listOf(
         IndexDescriptionAndPath(IndexDescription(name = "bIndex", fieldName = "b"), InMemoryEmptyIndex<Int>(FieldType.INTEGER))
 )
 
+private val columnInfos = listOf(
+        ColumnInfo(FieldType.STRING, "a", 0),
+        ColumnInfo(FieldType.INTEGER, "b", 1)
+)
+
 private val dataset = InMemoryDatasetReader(
-        columnInfoField = mutableMapOf(
-                Pair("a", ColumnInfo(FieldType.STRING, 0)),
-                Pair("b", ColumnInfo(FieldType.INTEGER, 1))
-        ),
-        datasetRows = listOf(DatasetRow(0, listOf("foobar", "1")), DatasetRow(1, listOf("baz", "10"))),
+        columnInfoField = columnInfos,
+        datasetRows = listOf(DatasetRow(0, listOf("foobar", "1"), columnInfos), DatasetRow(1, listOf("baz", "10"), columnInfos)),
         availableIndexes = availableIndexes
 )
 

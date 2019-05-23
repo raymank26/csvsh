@@ -14,17 +14,22 @@ class SqlPlanner {
         val reader = datasetReaderFactory.getReader(tablePath)
                 ?: throw PlannerException("Unable to find input for path = $tablePath")
         val sqlWherePlan = sqlAst.whereExpr()?.let { SqlWhereVisitor(reader.availableIndexes()).visit(it) }
-        val limit = sqlAst.limitExpr()?.INTEGER()?.text?.toInt()
-        val orderBy = sqlAst.orderByExpr()?.let {
-            val ref = it.reference().IDENTIFIER().text
-            OrderByPlanDescription(ref, it.DESC()?.let { true } ?: false)
-        }
         val selectStatements: List<SelectStatementExpr> = if (sqlAst.selectExpr().allColumns() != null) {
             emptyList()
         } else {
             sqlAst.selectExpr().selectColumn().map { SqlSelectColumnVisitor().visit(it) }
         }
         val groupByFields: List<String> = getGroupByExpression(sqlAst, selectStatements)
+
+        val orderBy = sqlAst.orderByExpr()?.let {
+            val ref = it.reference().IDENTIFIER().text
+            OrderByPlanDescription(ref, it.DESC()?.let { true } ?: false)
+        }
+        val limit = sqlAst.limitExpr()?.INTEGER()?.text?.toInt()?.apply {
+            if (this < 1) {
+                throw PlannerException("Limit statement has to be > 0")
+            }
+        }
         return SqlPlan(selectStatements, reader, sqlWherePlan, groupByFields, orderBy, limit)
     }
 

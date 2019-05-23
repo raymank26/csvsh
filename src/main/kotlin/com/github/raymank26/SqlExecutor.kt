@@ -11,10 +11,17 @@ class SqlExecutor {
         if (sqlPlan.wherePlanDescription != null) {
             val expressionToLines = executeAtomExpressions(sqlPlan)
             val resultLines = ExpressionTreeEvaluator(expressionToLines).visitExpression(sqlPlan.wherePlanDescription.expressionTree)
-            val rows = readRows(sqlPlan, resultLines)
+            var dataset = readDataset(sqlPlan, resultLines)
             if (sqlPlan.groupByFields.isNotEmpty()) {
+                dataset = applyGroupBy(sqlPlan, dataset)
             }
-            TODO()
+            if (sqlPlan.orderByPlanDescription != null) {
+                dataset = applyOrderBy(sqlPlan.orderByPlanDescription, dataset)
+            }
+            if (sqlPlan.limit != null) {
+                dataset = applyLimit(sqlPlan.limit, dataset)
+            }
+            return dataset
         } else {
             TODO()
         }
@@ -91,7 +98,7 @@ class SqlExecutor {
         val result = mutableMapOf<ExpressionAtom, MutableSet<Int>>()
         sqlPlan.datasetReader.read({ row: DatasetRow ->
             for (expression in atoms) {
-                if (isRowApplicable(sqlPlan, row, expression)) {
+                if (isRowApplicable(row, expression)) {
                     result.compute(expression) { _, bs ->
                         return@compute if (bs == null) {
                             mutableSetOf(row.rowNum)
@@ -106,20 +113,17 @@ class SqlExecutor {
         return result
     }
 
-    private fun isRowApplicable(sqlPlan: SqlPlan, row: DatasetRow, atom: ExpressionAtom): Boolean {
+    private fun isRowApplicable(row: DatasetRow, atom: ExpressionAtom): Boolean {
         val fieldName = (atom.leftVal as RefValue).name
-        val columnNum = sqlPlan.datasetReader.getColumnInfo()[fieldName]?.position
-                ?: throw RuntimeException("Not found")
-        val columnValue = row.columns[columnNum]
+        val columnValue = row.getCellTyped(fieldName)!!
 
-        return when (requireNotNull(sqlPlan.datasetReader.getColumnInfo()[fieldName]).type) {
+
+        return when (requireNotNull(row.getCellType(fieldName))) {
             FieldType.INTEGER -> {
-                val fieldValue: Int = columnValue.toInt()
-                checkAtom(atom, fieldValue, atom.rightVal) { sqlValue -> (sqlValue as IntValue).value }
+                checkAtom(atom, columnValue, atom.rightVal) { sqlValue -> (sqlValue as IntValue).value }
             }
             FieldType.FLOAT -> {
-                val fieldValue = columnValue.toFloat()
-                checkAtom(atom, fieldValue, atom.rightVal) { sqlValue -> (sqlValue as FloatValue).value }
+                checkAtom(atom, columnValue, atom.rightVal) { sqlValue -> (sqlValue as FloatValue).value }
             }
             FieldType.STRING -> {
                 checkAtom(atom, columnValue, atom.rightVal) { sqlValue -> (sqlValue as StringValue).value }
@@ -143,16 +147,83 @@ class SqlExecutor {
         }
     }
 
-    private fun readRows(sqlPlan: SqlPlan, rowIndexes: Set<Int>?): DatasetResult {
+    private fun readDataset(sqlPlan: SqlPlan, rowIndexes: Set<Int>?): DatasetResult {
         val rows = mutableListOf<DatasetRow>()
         sqlPlan.datasetReader.read({ csvRow: DatasetRow ->
             if (rowIndexes == null || rowIndexes.contains(csvRow.rowNum)) {
                 rows.add(csvRow)
             }
         }, null)
-        return DatasetResult(sqlPlan.datasetReader.getColumnNames(), rows)
+        return DatasetResult(rows)
+    }
+
+    private fun applyGroupBy(sqlPlan: SqlPlan, rows: DatasetResult): DatasetResult {
+        val groupByBuckets = mutableMapOf<List<String>, List<AggregateFunction<Any, Any>>>()
+        val indexedAggStatements = sqlPlan.selectStatements.mapNotNull { it as? AggSelectExpr }.withIndex()
+
+        for (row in rows.rows) {
+            val bucketDesc = sqlPlan.groupByFields.map { row.getCell(it) ?: fieldNotFound(it) }
+            groupByBuckets.compute(bucketDesc) { _, prev ->
+                if (prev != null) {
+                    for ((i, aggStatement) in indexedAggStatements) {
+                        prev[i].process(row.getCell(aggStatement.fieldName)!!)
+                    }
+                    prev
+                } else {
+                    val r = Array<AggregateFunction<Any, Any>?>(5) { null }
+                    for ((i, aggStatement) in indexedAggStatements) {
+                        val cellType = row.getCellType(aggStatement.fieldName)
+                        val agg = AGGREGATES_MAPPING[Pair(aggStatement.type, cellType)]
+                                ?: throw PlannerException("Unable to execute agg of type = ${aggStatement.fieldName} and column type = $cellType")
+                        agg.process(row.getCellTyped(aggStatement.fieldName)!!)
+                        r[i] = agg
+                    }
+                    r.filterNotNull()
+                }
+            }
+        }
+        val newRows = mutableListOf<DatasetRow>()
+        for ((fixedFields, aggregates) in groupByBuckets) {
+            val cells = mutableListOf<String>()
+            for (fieldName in fixedFields) {
+                cells.add(fieldName)
+            }
+            for (agg in aggregates) {
+                cells.add(agg.toText())
+            }
+        }
+        return DatasetResult(newRows)
+    }
+
+    private fun fieldNotFound(name: String): Nothing {
+        throw ExecutorException("Field \"$name\" is not found")
+    }
+
+    private fun applyOrderBy(orderByStmt: OrderByPlanDescription, dataset: DatasetResult): DatasetResult {
+        val f = { row: DatasetRow -> row.getCell(orderByStmt.field) ?: fieldNotFound(orderByStmt.field) }
+        val newRows = if (orderByStmt.desc) {
+            dataset.rows.sortedByDescending(f)
+        } else {
+            dataset.rows.sortedBy(f)
+        }
+        return dataset.copy(rows = newRows)
+    }
+
+    private fun applyLimit(limit: Int, dataset: DatasetResult): DatasetResult {
+        return dataset.copy(rows = dataset.rows.take(limit))
     }
 }
+
+@Suppress("UNCHECKED_CAST")
+val AGGREGATES_MAPPING: Map<Pair<String, FieldType>, AggregateFunction<Any, Any>> = mapOf(
+        Pair(Pair("MAX", FieldType.INTEGER), Aggregates.MAX_INT as AggregateFunction<Any, Any>),
+        Pair(Pair("MAX", FieldType.FLOAT), Aggregates.MAX_FLOAT as AggregateFunction<Any, Any>),
+        Pair(Pair("SUM", FieldType.INTEGER), Aggregates.SUM_INT as AggregateFunction<Any, Any>),
+        Pair(Pair("SUM", FieldType.FLOAT), Aggregates.SUM_FLOAT as AggregateFunction<Any, Any>),
+        Pair(Pair("COUNT", FieldType.INTEGER), Aggregates.COUNT_ANY as AggregateFunction<Any, Any>),
+        Pair(Pair("COUNT", FieldType.FLOAT), Aggregates.COUNT_ANY as AggregateFunction<Any, Any>),
+        Pair(Pair("COUNT", FieldType.STRING), Aggregates.COUNT_ANY as AggregateFunction<Any, Any>)
+)
 
 private class ExpressionTreeEvaluator(private val atomsToBitSet: Map<ExpressionAtom, Set<Int>>) : BaseExpressionVisitor<Set<Int>>() {
     override fun visitAtom(atom: ExpressionAtom): Set<Int> {

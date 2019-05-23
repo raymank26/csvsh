@@ -21,24 +21,20 @@ class ServiceStatementsExecutor(private val csvFormat: CSVFormat) {
         val fieldName = ctx.reference().text
         val indexFile = csvPathToIndexFile(csvPath)
         val csvReader = CsvDatasetReader(csvFormat, csvPath)
-        val fields: Map<String, ColumnInfo> = csvReader.getColumnInfo()
+        val fields: List<ColumnInfo> = csvReader.getColumnInfo()
 
-        val columnInfo: ColumnInfo = requireNotNull(fields[fieldName])
+        val columnInfo: ColumnInfo = fields.find { it.fieldName == fieldName }!!
 
         val keySerializer: Any
-        val keyToPos: (String) -> Any
-        when (columnInfo.type) {
+        keySerializer = when (columnInfo.type) {
             FieldType.INTEGER -> {
-                keySerializer = Serializer.INTEGER
-                keyToPos = { str: String -> str.toInt() }
+                Serializer.INTEGER
             }
             FieldType.FLOAT -> {
-                keySerializer = Serializer.FLOAT
-                keyToPos = { str: String -> str.toFloat() }
+                Serializer.FLOAT
             }
             FieldType.STRING -> {
-                keySerializer = Serializer.STRING
-                keyToPos = { str: String -> str }
+                Serializer.STRING
             }
         }
         @Suppress("UNCHECKED_CAST")
@@ -50,7 +46,7 @@ class ServiceStatementsExecutor(private val csvFormat: CSVFormat) {
             indexContent.clear()
 
             csvReader.read({ row ->
-                val fieldValue: Any = keyToPos(row.columns[columnInfo.position])
+                val fieldValue: Any = row.getCellTyped(fieldName)!!
                 indexContent.compute(fieldValue) { _: Any, positions: IntArray? ->
                     if (positions == null) {
                         IntArray(1).apply { this[0] = row.rowNum }
@@ -103,7 +99,7 @@ class ServiceStatementsExecutor(private val csvFormat: CSVFormat) {
         return csvPath.parent.resolve("indexContent").toFile()
     }
 
-    fun describeTable(ctx: SqlParser.DescribeContext): Map<String, ColumnInfo> {
+    fun describeTable(ctx: SqlParser.DescribeContext): List<ColumnInfo> {
         return CsvDatasetReader(csvFormat, Paths.get(ctx.table().text)).getColumnInfo()
     }
 }
