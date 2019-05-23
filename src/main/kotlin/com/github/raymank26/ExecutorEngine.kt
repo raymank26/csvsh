@@ -1,7 +1,5 @@
 package com.github.raymank26
 
-import org.apache.commons.csv.CSVFormat
-
 /**
  * Date: 2019-05-13.
  */
@@ -10,7 +8,7 @@ class ExecutorEngine {
     private val sqlParser: SqlAstBuilder = SqlAstBuilder()
     private val sqlPlanner: SqlPlanner = SqlPlanner()
     private val sqlExecutor: SqlExecutor = SqlExecutor()
-    private val ssExecutor = ServiceStatementsExecutor(CSVFormat.RFC4180)
+    private val ssExecutor = ServiceStatementsExecutor()
 
     fun execute(inputLine: String): ExecutorResponse {
         val parsedStatement: StatementType
@@ -19,19 +17,19 @@ class ExecutorEngine {
         } catch (e: SyntaxException) {
             return TextResponse(e.message!!)
         }
+        val csvReadingFactory = ssExecutor.createCsvDatasetReaderFactory()
 
         return when (parsedStatement) {
             is CreateIndexType -> {
-                ssExecutor.createIndex(parsedStatement.ctx)
+                ssExecutor.createIndex(parsedStatement.ctx, csvReadingFactory)
                 VoidResponse
             }
             is DescribeStatement -> {
-                val description = ssExecutor.describeTable(parsedStatement.ctx)
+                val description = ssExecutor.describeTable(parsedStatement.ctx, csvReadingFactory)
                 TextResponse(description.toString())
             }
             is SelectStatement -> {
-                val csvFactory = ssExecutor.createCsvDatasetReaderFactory()
-                val planDescriptor = sqlPlanner.createPlan(parsedStatement.ctx, csvFactory)
+                val planDescriptor = sqlPlanner.createPlan(parsedStatement.ctx, csvReadingFactory)
                 val result = planDescriptor.datasetReader.use {
                     sqlExecutor.execute(planDescriptor)
                 }

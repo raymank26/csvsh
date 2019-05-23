@@ -47,7 +47,7 @@ class CaseChangingCharStream(private val stream: CharStream, private val upper: 
     }
 
     override fun getSourceName(): String {
-        return stream.getSourceName();
+        return stream.sourceName
     }
 }
 

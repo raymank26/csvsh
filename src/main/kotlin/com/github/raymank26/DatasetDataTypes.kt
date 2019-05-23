@@ -14,8 +14,16 @@ interface DatasetReaderFactory {
     fun getReader(path: Path): DatasetReader?
 }
 
-data class DatasetResult(val rows: List<DatasetRow>) {
+class CsvDatasetReaderFactory(private val indexesLoader: (Path) -> List<IndexDescriptionAndPath>) : DatasetReaderFactory {
+    override fun getReader(path: Path): DatasetReader? {
+        if (!path.toFile().exists()) {
+            return null
+        }
+        return CsvDatasetReader(CSVFormat.RFC4180, path, indexesLoader(path))
+    }
 }
+
+data class DatasetResult(val rows: List<DatasetRow>)
 
 data class DatasetRow(val rowNum: Int,
                       val columns: List<String>,
@@ -51,7 +59,8 @@ interface DatasetReader : AutoCloseable {
 }
 
 class CsvDatasetReader(private val csvFormat: CSVFormat,
-                       private val csvPath: Path) : DatasetReader {
+                       private val csvPath: Path,
+                       private val indexes: List<IndexDescriptionAndPath>) : DatasetReader {
 
     private val columnInfoField: List<ColumnInfo>
 
@@ -68,7 +77,7 @@ class CsvDatasetReader(private val csvFormat: CSVFormat,
     }
 
     override fun availableIndexes(): List<IndexDescriptionAndPath> {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+        return indexes
     }
 
     private fun readInner(limit: Int?, skipHeader: Boolean, handle: (csvRow: DatasetRow) -> Unit) {

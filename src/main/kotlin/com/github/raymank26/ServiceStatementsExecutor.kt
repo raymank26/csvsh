@@ -1,7 +1,6 @@
 package com.github.raymank26
 
 import com.github.raymank26.sql.SqlParser
-import org.apache.commons.csv.CSVFormat
 import org.mapdb.BTreeMap
 import org.mapdb.DBMaker
 import org.mapdb.Serializer
@@ -13,14 +12,15 @@ import java.nio.file.Paths
 /**
  * Date: 2019-05-18.
  */
-class ServiceStatementsExecutor(private val csvFormat: CSVFormat) {
+class ServiceStatementsExecutor {
 
-    fun createIndex(ctx: SqlParser.CreateIndexContext) {
+    fun createIndex(ctx: SqlParser.CreateIndexContext, datasetReaderFactory: DatasetReaderFactory) {
         val csvPath = Paths.get(ctx.table().text)
         val indexName = ctx.indexName().text
         val fieldName = ctx.reference().text
         val indexFile = csvPathToIndexFile(csvPath)
-        val csvReader = CsvDatasetReader(csvFormat, csvPath)
+        val csvReader = datasetReaderFactory.getReader(csvPath)
+                ?: throw PlannerException("No csv found for path = $csvPath")
         val fields: List<ColumnInfo> = csvReader.getColumnInfo()
 
         val columnInfo: ColumnInfo = fields.find { it.fieldName == fieldName }!!
@@ -62,7 +62,7 @@ class ServiceStatementsExecutor(private val csvFormat: CSVFormat) {
     }
 
     fun createCsvDatasetReaderFactory(): DatasetReaderFactory {
-        return TODO()
+        return CsvDatasetReaderFactory { csvPath -> loadIndexes(csvPath) }
     }
 
     fun loadIndexes(csvPath: Path): List<IndexDescriptionAndPath> {
@@ -99,7 +99,9 @@ class ServiceStatementsExecutor(private val csvFormat: CSVFormat) {
         return csvPath.parent.resolve("indexContent").toFile()
     }
 
-    fun describeTable(ctx: SqlParser.DescribeContext): List<ColumnInfo> {
-        return CsvDatasetReader(csvFormat, Paths.get(ctx.table().text)).getColumnInfo()
+    fun describeTable(ctx: SqlParser.DescribeContext, readerFactory: DatasetReaderFactory): List<ColumnInfo> {
+        val csvPath = Paths.get(ctx.table().text)
+        return readerFactory.getReader(csvPath)?.getColumnInfo()
+                ?: throw PlannerException("No csv found for path = $csvPath")
     }
 }
