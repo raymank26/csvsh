@@ -10,13 +10,19 @@ class SqlExecutorTest : SqlTestUtils {
 
     @Test
     fun simple() {
-        val executeSelect = executeSelect("SELECT a FROM 'a' WHERE b = 1", getDefaultDatasetFactory())
-        assertEquals(1, executeSelect.rows.size)
+        val dataset = executeSelect("SELECT a FROM 'a' WHERE b = 1", getDefaultDatasetFactory())
+        assertEquals(1, dataset.rows.size)
     }
 
     @Test
     fun testIn() {
-        val executeSelect = executeSelect("SELECT a FROM 'a' WHERE a LIKE '%ob%'", getDefaultDatasetFactory())
-        assertEquals(1, executeSelect.rows.size)
+        val dataset = executeSelect("SELECT a FROM 'a' WHERE a LIKE '%ob%'", getDefaultDatasetFactory())
+        assertEquals(1, dataset.rows.size)
+    }
+
+    @Test
+    fun testGroupBy() {
+        val dataset = executeSelect("SELECT a, sum(b) FROM 'a' GROUP BY a", getDefaultDatasetFactory())
+        println(dataset)
     }
 }

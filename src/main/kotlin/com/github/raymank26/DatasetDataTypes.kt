@@ -27,7 +27,7 @@ data class DatasetResult(val rows: List<DatasetRow>)
 
 data class DatasetRow(val rowNum: Int,
                       val columns: List<String>,
-                      private val columnInfo: List<ColumnInfo>) {
+                      val columnInfo: List<ColumnInfo>) {
 
     private val fieldNameToInfo = lazy { columnInfo.associateBy { it.fieldName } }
 
@@ -151,10 +151,12 @@ class AggregateFunctionImpl<in T, out T2>(private var initial: T2, private val a
     }
 }
 
+typealias AggregateFunctionFactory<T1, T2> = () -> AggregateFunction<T1, T2>
+
 object Aggregates {
-    val SUM_INT: AggregateFunction<Int, Int> = AggregateFunctionImpl(0, { a, b -> a + b })
-    val SUM_FLOAT: AggregateFunction<Float, Float> = AggregateFunctionImpl(0.0.toFloat(), { a, b -> a + b })
-    val COUNT_ANY: AggregateFunction<Any, Int> = AggregateFunctionImpl(0, { a, _ -> a + 1 })
-    val MAX_INT: AggregateFunctionImpl<Int, Int> = AggregateFunctionImpl(Int.MIN_VALUE, { a, b -> Math.max(a, b) })
-    val MAX_FLOAT: AggregateFunction<Float, Float> = AggregateFunctionImpl(Float.MIN_VALUE, { a, b -> Math.max(a, b) })
+    val SUM_INT: AggregateFunctionFactory<Int, Int> = { AggregateFunctionImpl(0, { a, b -> a + b }) }
+    val SUM_FLOAT: AggregateFunctionFactory<Float, Float> = { AggregateFunctionImpl(0.0.toFloat(), { a, b -> a + b }) }
+    val COUNT_ANY: AggregateFunctionFactory<Any, Int> = { AggregateFunctionImpl(0, { a, _ -> a + 1 }) }
+    val MAX_INT: AggregateFunctionFactory<Int, Int> = { AggregateFunctionImpl(Int.MIN_VALUE, { a, b -> Math.max(a, b) }) }
+    val MAX_FLOAT: AggregateFunctionFactory<Float, Float> = { AggregateFunctionImpl(Float.MIN_VALUE, { a, b -> Math.max(a, b) }) }
 }

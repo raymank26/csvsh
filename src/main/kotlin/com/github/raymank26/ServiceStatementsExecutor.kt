@@ -76,18 +76,19 @@ class ServiceStatementsExecutor {
             val (indexName, fieldName, fieldTypeMark) = name.split("|")
             val fieldType = FieldType.MARK_TO_FIELD_TYPE[fieldTypeMark.toByte()] ?:
                 throw RuntimeException("Unable to get fieldType")
-            val readOnlyIndex: ReadOnlyIndex<*> = when (fieldType) {
+            @Suppress("UNCHECKED_CAST")
+            val readOnlyIndex: ReadOnlyIndex<Any> = when (fieldType) {
                 FieldType.INTEGER -> {
                     val tm = db.treeMap(name, Serializer.INTEGER, Serializer.INT_ARRAY).open()
-                    MapDBReadonlyIndex(tm, FieldType.INTEGER)
+                    MapDBReadonlyIndex(tm, FieldType.INTEGER) as ReadOnlyIndex<Any>
                 }
                 FieldType.FLOAT -> {
                     val tm = db.treeMap(name, Serializer.FLOAT, Serializer.INT_ARRAY).open()
-                    MapDBReadonlyIndex(tm, FieldType.FLOAT)
+                    MapDBReadonlyIndex(tm, FieldType.FLOAT) as ReadOnlyIndex<Any>
                 }
                 FieldType.STRING -> {
                     val tm = db.treeMap(name, Serializer.STRING, Serializer.INT_ARRAY).open()
-                    MapDBReadonlyIndex(tm, FieldType.FLOAT)
+                    MapDBReadonlyIndex(tm, FieldType.FLOAT) as ReadOnlyIndex<Any>
                 }
             }
             result.add(IndexDescriptionAndPath(IndexDescription(indexName, fieldName), readOnlyIndex))

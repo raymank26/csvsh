@@ -8,23 +8,23 @@ import java.util.regex.Pattern
 class SqlExecutor {
 
     fun execute(sqlPlan: SqlPlan): DatasetResult {
-        if (sqlPlan.wherePlanDescription != null) {
+        val lines = if (sqlPlan.wherePlanDescription != null) {
             val expressionToLines = executeAtomExpressions(sqlPlan)
-            val resultLines = ExpressionTreeEvaluator(expressionToLines).visitExpression(sqlPlan.wherePlanDescription.expressionTree)
-            var dataset = readDataset(sqlPlan, resultLines)
-            if (sqlPlan.groupByFields.isNotEmpty()) {
-                dataset = applyGroupBy(sqlPlan, dataset)
-            }
-            if (sqlPlan.orderByPlanDescription != null) {
-                dataset = applyOrderBy(sqlPlan.orderByPlanDescription, dataset)
-            }
-            if (sqlPlan.limit != null) {
-                dataset = applyLimit(sqlPlan.limit, dataset)
-            }
-            return dataset
+            ExpressionTreeEvaluator(expressionToLines).visitExpression(sqlPlan.wherePlanDescription.expressionTree)
         } else {
-            TODO()
+            null
         }
+        var dataset = readDataset(sqlPlan, lines)
+        if (sqlPlan.groupByFields.isNotEmpty()) {
+            dataset = applyGroupBy(sqlPlan, dataset)
+        }
+        if (sqlPlan.orderByPlanDescription != null) {
+            dataset = applyOrderBy(sqlPlan.orderByPlanDescription, dataset)
+        }
+        if (sqlPlan.limit != null) {
+            dataset = applyLimit(sqlPlan.limit, dataset)
+        }
+        return dataset
     }
 
     private fun executeAtomExpressions(sqlPlan: SqlPlan): Map<ExpressionAtom, Set<Int>> {
@@ -167,35 +167,57 @@ class SqlExecutor {
         val groupByBuckets = mutableMapOf<List<String>, List<AggregateFunction<Any, Any>>>()
         val indexedAggStatements = sqlPlan.selectStatements.mapNotNull { it as? AggSelectExpr }
 
+        val aggToColumnInfo = mutableMapOf<AggregateFunction<Any, Any>, ColumnInfo>()
+
         for (row in rows.rows) {
             val bucketDesc = sqlPlan.groupByFields.map { row.getCell(it) ?: fieldNotFound(it) }
             groupByBuckets.compute(bucketDesc) { _, prev ->
                 if (prev != null) {
                     for ((i, aggStatement) in indexedAggStatements.withIndex()) {
-                        prev[i].process(row.getCell(aggStatement.fieldName)!!)
+                        prev[i].process(row.getCellTyped(aggStatement.fieldName)!!)
                     }
                     prev
                 } else {
                     Array(indexedAggStatements.size) { i ->
                         val aggStatement = indexedAggStatements[i]
-                        val cellType = row.getCellType(aggStatement.fieldName)
-                        val agg = AGGREGATES_MAPPING[Pair(aggStatement.type, cellType)]
-                                ?: throw PlannerException("Unable to execute agg of type = ${aggStatement.fieldName} and column type = $cellType")
+                        val cellType: FieldType = row.getCellType(aggStatement.fieldName)
+                                ?: throw RuntimeException("Foobar")
+                        val agg = AGGREGATES_MAPPING[Pair(aggStatement.type, cellType)]?.invoke()
+                                ?: throw PlannerException("Unable to execute agg of type = ${aggStatement.type} and column type = $cellType")
+                        aggToColumnInfo[agg] = ColumnInfo(cellType, "${aggStatement.type}(${aggStatement.fieldName})", indexedAggStatements.size + i)
                         agg.process(row.getCellTyped(aggStatement.fieldName)!!)
                         agg
                     }.toList()
                 }
             }
         }
+        if (groupByBuckets.isEmpty()) {
+            return DatasetResult(emptyList())
+        }
+
+
+        val newColumnInfo = {
+            val firstResult: MutableMap.MutableEntry<List<String>, List<AggregateFunction<Any, Any>>> = groupByBuckets.entries.first()
+            val firstPart = rows.rows.first().columnInfo.filter { firstResult.key.contains(it.fieldName) }
+            val secondPart = firstResult.value.map { aggToColumnInfo[it]!! }
+            val res = mutableListOf<ColumnInfo>()
+            res.addAll(firstPart)
+            res.addAll(secondPart)
+            res
+        }()
+
+
         val newRows = mutableListOf<DatasetRow>()
+        var rowNum = 0
         for ((fixedFields, aggregates) in groupByBuckets) {
-            val cells = mutableListOf<String>()
+            val columns = mutableListOf<String>()
             for (fieldName in fixedFields) {
-                cells.add(fieldName)
+                columns.add(fieldName)
             }
             for (agg in aggregates) {
-                cells.add(agg.toText())
+                columns.add(agg.toText())
             }
+            newRows.add(DatasetRow(rowNum++, columns, newColumnInfo))
         }
         return DatasetResult(newRows)
     }
@@ -220,14 +242,14 @@ class SqlExecutor {
 }
 
 @Suppress("UNCHECKED_CAST")
-val AGGREGATES_MAPPING: Map<Pair<String, FieldType>, AggregateFunction<Any, Any>> = mapOf(
-        Pair(Pair("MAX", FieldType.INTEGER), Aggregates.MAX_INT as AggregateFunction<Any, Any>),
-        Pair(Pair("MAX", FieldType.FLOAT), Aggregates.MAX_FLOAT as AggregateFunction<Any, Any>),
-        Pair(Pair("SUM", FieldType.INTEGER), Aggregates.SUM_INT as AggregateFunction<Any, Any>),
-        Pair(Pair("SUM", FieldType.FLOAT), Aggregates.SUM_FLOAT as AggregateFunction<Any, Any>),
-        Pair(Pair("COUNT", FieldType.INTEGER), Aggregates.COUNT_ANY as AggregateFunction<Any, Any>),
-        Pair(Pair("COUNT", FieldType.FLOAT), Aggregates.COUNT_ANY as AggregateFunction<Any, Any>),
-        Pair(Pair("COUNT", FieldType.STRING), Aggregates.COUNT_ANY as AggregateFunction<Any, Any>)
+val AGGREGATES_MAPPING: Map<Pair<String, FieldType>, AggregateFunctionFactory<Any, Any>> = mapOf(
+        Pair(Pair("max", FieldType.INTEGER), Aggregates.MAX_INT as AggregateFunctionFactory<Any, Any>),
+        Pair(Pair("max", FieldType.FLOAT), Aggregates.MAX_FLOAT as AggregateFunctionFactory<Any, Any>),
+        Pair(Pair("sum", FieldType.INTEGER), Aggregates.SUM_INT as AggregateFunctionFactory<Any, Any>),
+        Pair(Pair("sum", FieldType.FLOAT), Aggregates.SUM_FLOAT as AggregateFunctionFactory<Any, Any>),
+        Pair(Pair("count", FieldType.INTEGER), Aggregates.COUNT_ANY as AggregateFunctionFactory<Any, Any>),
+        Pair(Pair("count", FieldType.FLOAT), Aggregates.COUNT_ANY as AggregateFunctionFactory<Any, Any>),
+        Pair(Pair("count", FieldType.STRING), Aggregates.COUNT_ANY as AggregateFunctionFactory<Any, Any>)
 )
 
 private class ExpressionTreeEvaluator(private val atomsToBitSet: Map<ExpressionAtom, Set<Int>>) : BaseExpressionVisitor<Set<Int>>() {

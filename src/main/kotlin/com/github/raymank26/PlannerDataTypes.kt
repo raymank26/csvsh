@@ -5,7 +5,7 @@ package com.github.raymank26
  */
 data class IndexDescription(val name: String, val fieldName: String)
 
-data class IndexDescriptionAndPath(val description: IndexDescription, val indexContent: ReadOnlyIndex<*>)
+data class IndexDescriptionAndPath(val description: IndexDescription, val indexContent: ReadOnlyIndex<Any>)
 
 sealed class ScanSource
 object CsvInput : ScanSource()

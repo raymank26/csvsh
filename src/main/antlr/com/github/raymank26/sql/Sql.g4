@@ -131,7 +131,7 @@ BOOL_COMP
  ;
 
 AGG
- : 'MAX' | 'MIN'
+ : 'MAX' | 'MIN' | 'SUM' | 'COUNT'
  ;
 
 BOOL_COMP_IN

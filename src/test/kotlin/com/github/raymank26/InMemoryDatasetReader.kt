@@ -1,6 +1,7 @@
 package com.github.raymank26
 
 import java.nio.file.Path
+import java.util.NavigableMap
 
 class InMemoryDatasetFactory(private val datasetReader: DatasetReader) : DatasetReaderFactory {
     override fun getReader(path: Path): DatasetReader? {
@@ -8,26 +9,26 @@ class InMemoryDatasetFactory(private val datasetReader: DatasetReader) : Dataset
     }
 }
 
-class InMemoryEmptyIndex<T>(private val fieldType: FieldType) : ReadOnlyIndex<T> {
+class InMemoryIndex<T>(private val fieldType: FieldType, private val inMemoryIndex: NavigableMap<T, List<Int>>) : ReadOnlyIndex<T> {
 
     override fun moreThan(from: T): Set<Int> {
-        return emptySet()
+        return inMemoryIndex.tailMap(from, false).values.flatten().toSet()
     }
 
     override fun moreThanEq(fromInclusive: T): Set<Int> {
-        return emptySet()
+        return inMemoryIndex.tailMap(fromInclusive, true).values.flatten().toSet()
     }
 
     override fun lessThan(to: T): Set<Int> {
-        return emptySet()
+        return inMemoryIndex.headMap(to, false).values.flatten().toSet()
     }
 
     override fun lessThanEq(toInclusive: T): Set<Int> {
-        return emptySet()
+        return inMemoryIndex.headMap(toInclusive, true).values.flatten().toSet()
     }
 
     override fun eq(value: T): Set<Int> {
-        return emptySet()
+        return inMemoryIndex[value]?.toSet() ?: emptySet()
     }
 
     override fun inRange(list: List<T>): Set<Int> {
