@@ -65,7 +65,7 @@ class ServiceStatementsExecutor {
         return CsvDatasetReaderFactory { csvPath -> loadIndexes(csvPath) }
     }
 
-    fun loadIndexes(csvPath: Path): List<IndexDescriptionAndPath> {
+    private fun loadIndexes(csvPath: Path): List<IndexDescriptionAndPath> {
         val indexFile = csvPathToIndexFile(csvPath)
         if (!indexFile.exists()) {
             return emptyList()
