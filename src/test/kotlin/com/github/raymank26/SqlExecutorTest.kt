@@ -11,13 +11,15 @@ class SqlExecutorTest : SqlTestUtils {
     @Test
     fun simple() {
         val dataset = executeSelect("SELECT a FROM 'a' WHERE b = 1", getDefaultDatasetFactory())
+        println(prettifyDataset(dataset))
         assertEquals(1, dataset.rows.size)
     }
 
     @Test
     fun testIn() {
-        val dataset = executeSelect("SELECT a FROM 'a' WHERE a LIKE '%ob%'", getDefaultDatasetFactory())
-        assertEquals(1, dataset.rows.size)
+        val dataset = executeSelect("SELECT a FROM 'a' WHERE a LIKE '%ba%'", getDefaultDatasetFactory())
+        println(prettifyDataset(dataset))
+        assertEquals(4, dataset.rows.size)
     }
 
     @Test
