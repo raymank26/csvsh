@@ -17,7 +17,7 @@ class SqlExecutorTest : SqlTestUtils {
 
     @Test
     fun testLike() {
-        val dataset = executeSelect("SELECT * FROM 'a' WHERE a LIKE '%ba%'", getDefaultDatasetFactory())
+        val dataset = executeSelect("SELECT * FROM 'a' WHERE a LIKE '%ba%' AND c < 3.2 AND b <= 2", getDefaultDatasetFactory())
         println(prettifyDataset(dataset))
     }
 
