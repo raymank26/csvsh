@@ -16,15 +16,14 @@ class SqlExecutorTest : SqlTestUtils {
     }
 
     @Test
-    fun testIn() {
-        val dataset = executeSelect("SELECT a FROM 'a' WHERE a LIKE '%ba%'", getDefaultDatasetFactory())
+    fun testLike() {
+        val dataset = executeSelect("SELECT * FROM 'a' WHERE a LIKE '%ba%'", getDefaultDatasetFactory())
         println(prettifyDataset(dataset))
-        assertEquals(4, dataset.rows.size)
     }
 
     @Test
     fun testGroupBy() {
-        val dataset = executeSelect("SELECT a, SUM(b), MIN(b), MAX(b), COUNT(b) FROM 'a' GROUP BY a ORDER BY SUM(b) DESC", getDefaultDatasetFactory())
+        val dataset = executeSelect("SELECT a, SUM(b), MIN(b), MAX(b), COUNT(b), SUM(c) FROM 'a' GROUP BY a ORDER BY SUM(b) DESC", getDefaultDatasetFactory())
         println(prettifyDataset(dataset))
     }
 }

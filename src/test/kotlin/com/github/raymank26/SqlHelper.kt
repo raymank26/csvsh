@@ -2,6 +2,7 @@ package com.github.raymank26
 
 import java.util.NavigableMap
 import java.util.TreeMap
+import kotlin.test.assertEquals
 import kotlin.test.fail
 
 /**
@@ -12,14 +13,15 @@ private val sqlPlanner = SqlPlanner()
 private val sqlExecutor = SqlExecutor()
 
 private val columnInfos = listOf(
-        ColumnInfo(FieldType.STRING, "a", 0),
-        ColumnInfo(FieldType.INTEGER, "b", 1)
+        ColumnInfo(FieldType.STRING, "a"),
+        ColumnInfo(FieldType.INTEGER, "b"),
+        ColumnInfo(FieldType.FLOAT, "c")
 )
 val datasetRows = createDataset(listOf(
-        listOf("foobar", "1"),
-        listOf("baz", "10"),
-        listOf("baz", "11"),
-        listOf("bazz", "2")
+        listOf("foobar", "1", "3.0"),
+        listOf("baz", "10", "3.4"),
+        listOf("baz", "11", "7"),
+        listOf("bazz", "2", "-1")
 ), columnInfos)
 
 private val availableIndexes = listOf(
@@ -86,11 +88,14 @@ interface SqlTestUtils {
         }
     }
 
-    fun testFailure(r: () -> Unit) {
+    fun testFailure(exceptionClazz: Class<*>? = null, r: () -> Unit) {
         try {
             r()
             fail("Passed function has been executed normally, but failure has been expected")
-        } catch (_: Exception) {
+        } catch (e: Exception) {
+            if (exceptionClazz != null) {
+                assertEquals(exceptionClazz, e.javaClass)
+            }
         }
     }
 }

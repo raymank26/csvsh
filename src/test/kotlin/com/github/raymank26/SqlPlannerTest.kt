@@ -45,11 +45,15 @@ class SqlPlannerTest : SqlTestUtils {
 
     @Test
     fun testGroupByFailure1() {
-        testFailure { makePlan("SELECT a,b,c FROM './a' GROUP BY a,b") }
+        testPlannerFailure { makePlan("SELECT a,b,c FROM './a' GROUP BY a,b") }
     }
 
     @Test
     fun testGroupByFailure2() {
-        testFailure { makePlan("SELECT * FROM './a' GROUP BY a") }
+        testPlannerFailure { makePlan("SELECT * FROM './a' GROUP BY a") }
+    }
+
+    private fun testPlannerFailure(r: () -> Unit) {
+        testFailure(PlannerException::class.java) { r() }
     }
 }

@@ -17,6 +17,8 @@ class SqlExecutor {
         var dataset = readDataset(sqlPlan, lines)
         if (sqlPlan.groupByFields.isNotEmpty()) {
             dataset = applyGroupBy(sqlPlan, dataset)
+        } else {
+            dataset = applySelect(sqlPlan, dataset)
         }
         if (sqlPlan.orderByPlanDescription != null) {
             dataset = applyOrderBy(sqlPlan.orderByPlanDescription, dataset)
@@ -117,6 +119,27 @@ class SqlExecutor {
         return DatasetResult(rows, sqlPlan.datasetReader.columnInfo)
     }
 
+    private fun applySelect(sqlPlan: SqlPlan, rows: DatasetResult): DatasetResult {
+        val allowedFields = if (sqlPlan.selectStatements.isEmpty()) {
+            rows.columnInfo.map { it.fieldName }
+        } else {
+            sqlPlan.selectStatements.asSequence().map { it as SelectFieldExpr }.map { it.fieldName }.toSet()
+        }
+
+        val newRows = mutableListOf<DatasetRow>()
+        val fieldNameToInfo = rows.columnInfo.associateBy { it.fieldName }
+        val newColumnInfo = allowedFields.map { fieldNameToInfo[it]!! }
+        for (row in rows.rows) {
+            allowedFields.map { row.getCell(it) }
+            val columns = mutableListOf<SqlValueAtom>()
+            for (allowedField in allowedFields) {
+                columns.add(row.getCell(allowedField))
+            }
+            newRows.add(DatasetRow(row.rowNum, columns, newColumnInfo))
+        }
+        return DatasetResult(newRows, newColumnInfo)
+    }
+
     private fun applyGroupBy(sqlPlan: SqlPlan, rows: DatasetResult): DatasetResult {
         val groupByBuckets = mutableMapOf<List<Pair<ColumnInfo, SqlValueAtom>>, List<AggregateFunction>>()
         val aggStatements = sqlPlan.selectStatements.mapNotNull { it as? AggSelectExpr }
@@ -152,7 +175,7 @@ class SqlExecutor {
                         for (i in 0 until aggStatements.size) {
                             val aggStatement = aggStatements[i]
                             val type = row.getCellType(aggStatement.fieldName)
-                            aggToColumnInfo.add(ColumnInfo(type, aggStatement.fullFieldName, plainStatements.size + i + 1))
+                            aggToColumnInfo.add(ColumnInfo(type, aggStatement.fullFieldName))
                         }
                     }
                     initAggList

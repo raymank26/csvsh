@@ -9,7 +9,6 @@ import java.nio.file.Path
 /**
  * Date: 2019-05-17.
  */
-
 interface DatasetReaderFactory {
     fun getReader(path: Path): DatasetReader?
 }
@@ -29,11 +28,13 @@ data class DatasetRow(val rowNum: Int,
                       val columns: List<SqlValueAtom>,
                       val columnInfo: List<ColumnInfo>) {
 
-    private val fieldNameToInfo = lazy { columnInfo.associateBy { it.fieldName } }
+    private val fieldNameToInfo: Map<String, Pair<ColumnInfo, Int>> = columnInfo.withIndex().associate {
+        Pair(it.value.fieldName, Pair(it.value, it.index))
+    }
 
     fun getCell(fieldName: String): SqlValueAtom {
-        return fieldNameToInfo.value[fieldName]?.let {
-            columns[it.position]
+        return fieldNameToInfo[fieldName]?.let {
+            columns[it.second]
         } ?: fieldNotFound(fieldName)
     }
 
@@ -42,7 +43,7 @@ data class DatasetRow(val rowNum: Int,
     }
 
     fun getColumnInfo(fieldName: String): ColumnInfo? {
-        return fieldNameToInfo.value[fieldName]
+        return fieldNameToInfo[fieldName]?.first
     }
 }
 
@@ -100,13 +101,13 @@ class CsvDatasetReader(private val csvFormat: CSVFormat,
             return emptyList()
         }
         val result = mutableListOf<ColumnInfo>()
-        row!!.forEachIndexed { i, columnName ->
+        row!!.forEach { columnName ->
             val fieldType: FieldType = when {
                 columnName.contains('.') && columnName.toFloatOrNull() != null -> FieldType.FLOAT
                 columnName.toIntOrNull() != null -> FieldType.INTEGER
                 else -> FieldType.STRING
             }
-            result.add(ColumnInfo(fieldType, columnName, i))
+            result.add(ColumnInfo(fieldType, columnName))
         }
         return result
     }
@@ -123,8 +124,7 @@ fun createSqlAtom(value: String, type: FieldType): SqlValueAtom {
     }
 }
 
-
-data class ColumnInfo(val type: FieldType, val fieldName: String, val position: Int)
+data class ColumnInfo(val type: FieldType, val fieldName: String)
 
 class AggregateFunction(private var initial: SqlValueAtom, private val agg: (SqlValueAtom, SqlValueAtom) -> SqlValueAtom) {
     fun process(value: SqlValueAtom) {

@@ -19,7 +19,12 @@ class SqlPlanner {
         } else {
             sqlAst.selectExpr().selectColumn().map { SqlSelectColumnVisitor().visit(it) }
         }
-        val groupByFields: List<String> = getGroupByExpression(sqlAst, selectStatements)
+        val groupByFields = if (sqlAst.groupByExpr() != null) {
+            getGroupByExpression(sqlAst, selectStatements)
+        } else {
+            validateSelectExpression(reader, selectStatements)
+            emptyList()
+        }
 
         val orderBy = sqlAst.orderByExpr()?.let {
             val ref = SqlSelectColumnVisitor().visit(it.selectColumn())
@@ -31,6 +36,18 @@ class SqlPlanner {
             }
         }
         return SqlPlan(selectStatements, reader, sqlWherePlan, groupByFields, orderBy, limit)
+    }
+
+    private fun validateSelectExpression(reader: DatasetReader, selectStatements: List<SelectStatementExpr>) {
+        val fieldToInfo = reader.columnInfo.associateBy { it.fieldName }
+        for (selectStatement in selectStatements) {
+            when (selectStatement) {
+                is AggSelectExpr -> throw PlannerException("Aggregate statements are not allowed without 'group by' statement")
+                is SelectFieldExpr -> if (!fieldToInfo.containsKey(selectStatement.fullFieldName)) {
+                    throw PlannerException("Select field = ${selectStatement.fieldName} is not in dataset")
+                }
+            }
+        }
     }
 
     private fun getGroupByExpression(sqlAst: SqlParser.SelectContext, selectStatements: List<SelectStatementExpr>): List<String> {
