@@ -19,7 +19,7 @@ groupByExpr
  ;
 
 orderByExpr
- : reference DESC?
+ : selectColumn DESC?
  ;
 
 limitExpr
@@ -47,8 +47,8 @@ whereExpr
  ;
 
 selectColumn
- : reference #selectColumnPlain
- | AGG LEFT_PAR reference RIGHT_PAR #selectColumnAgg
+ : AGG LEFT_PAR reference RIGHT_PAR #selectColumnAgg
+ | reference #selectColumnPlain
  ;
 
 variable locals [String type]

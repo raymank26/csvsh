@@ -27,7 +27,7 @@ private val availableIndexes = listOf(
 )
 
 private val dataset = InMemoryDatasetReader(
-        columnInfoField = columnInfos,
+        columnInfo = columnInfos,
         datasetRows = datasetRows,
         availableIndexes = availableIndexes
 )

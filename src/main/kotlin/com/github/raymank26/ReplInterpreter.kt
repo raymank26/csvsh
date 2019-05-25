@@ -1,5 +1,6 @@
 package com.github.raymank26
 
+import com.jakewharton.fliptables.FlipTable
 import java.io.BufferedReader
 import java.io.InputStreamReader
 
@@ -20,4 +21,11 @@ class ReplInterpreter {
             }
         }
     }
+}
+
+fun prettifyDataset(dataset: DatasetResult): String {
+    val header = dataset.columnInfo.map { it.fieldName }.toTypedArray()
+    val rows = dataset.rows.asSequence().take(20).map { it.columns.toTypedArray() }.toList().toTypedArray()
+
+    return FlipTable.of(header, rows)
 }

@@ -93,10 +93,17 @@ class PlannerException(msg: String) : Exception(msg)
 class SyntaxException(msg: String) : Exception(msg)
 class ExecutorException(msg: String) : Exception(msg)
 
-sealed class SelectStatementExpr
+sealed class SelectStatementExpr {
+    abstract val fullFieldName: String
+}
 
-data class AggSelectExpr(val type: String, val fieldName: String) : SelectStatementExpr()
-data class SelectFieldExpr(val fieldName: String) : SelectStatementExpr()
+data class AggSelectExpr(val type: String, val fieldName: String) : SelectStatementExpr() {
+    override val fullFieldName = "$type($fieldName)"
+}
+
+data class SelectFieldExpr(val fieldName: String) : SelectStatementExpr() {
+    override val fullFieldName: String = fieldName
+}
 
 data class SqlPlan(
         val selectStatements: List<SelectStatementExpr>,
@@ -108,7 +115,7 @@ data class SqlPlan(
 )
 
 data class OrderByPlanDescription(
-        val field: String,
+        val field: SelectStatementExpr,
         val desc: Boolean
 )
 

@@ -23,7 +23,7 @@ class CsvDatasetReaderFactory(private val indexesLoader: (Path) -> List<IndexDes
     }
 }
 
-data class DatasetResult(val rows: List<DatasetRow>)
+data class DatasetResult(val rows: List<DatasetRow>, val columnInfo: List<ColumnInfo>)
 
 data class DatasetRow(val rowNum: Int,
                       val columns: List<String>,
@@ -50,39 +50,32 @@ data class DatasetRow(val rowNum: Int,
     fun getCellType(fieldName: String): FieldType? {
         return fieldNameToInfo.value[fieldName]?.type
     }
+
+    fun getColumnInfo(fieldName: String): ColumnInfo? {
+        return fieldNameToInfo.value[fieldName]
+    }
 }
 
 interface DatasetReader : AutoCloseable {
+    val columnInfo: List<ColumnInfo>
+    val availableIndexes: List<IndexDescriptionAndPath>
+
     fun read(handle: (row: DatasetRow) -> Unit, limit: Int?)
-    fun getColumnInfo(): List<ColumnInfo>
-    fun availableIndexes(): List<IndexDescriptionAndPath>
 }
 
 class CsvDatasetReader(private val csvFormat: CSVFormat,
                        private val csvPath: Path,
-                       private val indexes: List<IndexDescriptionAndPath>) : DatasetReader {
+                       override val availableIndexes: List<IndexDescriptionAndPath>) : DatasetReader {
 
-    private val columnInfoField: List<ColumnInfo>
-
-    init {
-        columnInfoField = getColumnInfoInner()
-    }
+    override val columnInfo = getColumnInfoInner()
 
     override fun read(handle: (csvRow: DatasetRow) -> Unit, limit: Int?) {
         readInner(limit, true, handle)
     }
 
-    override fun getColumnInfo(): List<ColumnInfo> {
-        return columnInfoField
-    }
-
-    override fun availableIndexes(): List<IndexDescriptionAndPath> {
-        return indexes
-    }
-
     private fun readInner(limit: Int?, skipHeader: Boolean, handle: (csvRow: DatasetRow) -> Unit) {
         var headerSkipped = skipHeader
-        val columnNames = columnInfoField.map { it.fieldName }
+        val columnNames = columnInfo.map { it.fieldName }
         CSVParser(BufferedReader(FileReader(csvPath.toFile())), csvFormat).use {
             val linesIterator = it.iterator()
 
@@ -98,7 +91,7 @@ class CsvDatasetReader(private val csvFormat: CSVFormat,
                     val rowValue = csvLine.get(header)
                     columns.add(rowValue)
                 }
-                handle(DatasetRow(rowNum++, columns, columnInfoField))
+                handle(DatasetRow(rowNum++, columns, columnInfo))
                 if (limit != null && limit == rowNum) {
                     return@use
                 }
@@ -158,5 +151,7 @@ object Aggregates {
     val SUM_FLOAT: AggregateFunctionFactory<Float, Float> = { AggregateFunctionImpl(0.0.toFloat(), { a, b -> a + b }) }
     val COUNT_ANY: AggregateFunctionFactory<Any, Int> = { AggregateFunctionImpl(0, { a, _ -> a + 1 }) }
     val MAX_INT: AggregateFunctionFactory<Int, Int> = { AggregateFunctionImpl(Int.MIN_VALUE, { a, b -> Math.max(a, b) }) }
+    val MIN_INT: AggregateFunctionFactory<Int, Int> = { AggregateFunctionImpl(Int.MAX_VALUE, { a, b -> Math.min(a, b) }) }
     val MAX_FLOAT: AggregateFunctionFactory<Float, Float> = { AggregateFunctionImpl(Float.MIN_VALUE, { a, b -> Math.max(a, b) }) }
+    val MIN_FLOAT: AggregateFunctionFactory<Float, Float> = { AggregateFunctionImpl(Float.MAX_VALUE, { a, b -> Math.min(a, b) }) }
 }

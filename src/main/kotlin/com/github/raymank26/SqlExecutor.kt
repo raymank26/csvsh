@@ -46,7 +46,7 @@ class SqlExecutor {
     }
 
     private fun evalOverIndex(sqlPlan: SqlPlan, indexName: String, expressions: List<ExpressionAtom>): Map<ExpressionAtom, Set<Int>> {
-        val index = requireNotNull(sqlPlan.datasetReader.availableIndexes().find { it.description.name == indexName }?.indexContent) { "Unable to find index for name = $indexName" }
+        val index = requireNotNull(sqlPlan.datasetReader.availableIndexes.find { it.description.name == indexName }?.indexContent) { "Unable to find index for name = $indexName" }
         val fieldType = index.getType()
 
         val result = mutableMapOf<ExpressionAtom, Set<Int>>()
@@ -160,66 +160,76 @@ class SqlExecutor {
                 rows.add(csvRow)
             }
         }, null)
-        return DatasetResult(rows)
+        return DatasetResult(rows, sqlPlan.datasetReader.columnInfo)
     }
 
     private fun applyGroupBy(sqlPlan: SqlPlan, rows: DatasetResult): DatasetResult {
-        val groupByBuckets = mutableMapOf<List<String>, List<AggregateFunction<Any, Any>>>()
-        val indexedAggStatements = sqlPlan.selectStatements.mapNotNull { it as? AggSelectExpr }
+        val groupByBuckets = mutableMapOf<List<Pair<ColumnInfo, String>>, List<AggregateFunction<Any, Any>>>()
+        val aggStatements = sqlPlan.selectStatements.mapNotNull { it as? AggSelectExpr }
+        val plainStatements = sqlPlan.selectStatements.mapNotNull { it as? SelectFieldExpr }
 
-        val aggToColumnInfo = mutableMapOf<AggregateFunction<Any, Any>, ColumnInfo>()
+        val aggToColumnInfo = mutableListOf<ColumnInfo>()
+        var plainToColumnInfo = listOf<ColumnInfo>()
 
         for (row in rows.rows) {
-            val bucketDesc = sqlPlan.groupByFields.map { row.getCell(it) ?: fieldNotFound(it) }
+            val bucketDesc = sqlPlan.groupByFields.map { Pair(row.getColumnInfo(it)!!, row.getCell(it)!!) }
+            if (plainToColumnInfo.isEmpty()) {
+                for (plainStatement in plainStatements) {
+                    plainToColumnInfo = bucketDesc.map { it.first }
+                }
+            }
             groupByBuckets.compute(bucketDesc) { _, prev ->
                 if (prev != null) {
-                    for ((i, aggStatement) in indexedAggStatements.withIndex()) {
+                    for ((i, aggStatement) in aggStatements.withIndex()) {
                         prev[i].process(row.getCellTyped(aggStatement.fieldName)!!)
                     }
                     prev
                 } else {
-                    Array(indexedAggStatements.size) { i ->
-                        val aggStatement = indexedAggStatements[i]
+                    val initAggList = mutableListOf<AggregateFunction<Any, Any>>()
+                    for (i in 0 until aggStatements.size) {
+                        val aggStatement = aggStatements[i]
                         val cellType: FieldType = row.getCellType(aggStatement.fieldName)
-                                ?: throw RuntimeException("Foobar")
+                                ?: fieldNotFound(aggStatement.fieldName)
                         val agg = AGGREGATES_MAPPING[Pair(aggStatement.type, cellType)]?.invoke()
                                 ?: throw PlannerException("Unable to execute agg of type = ${aggStatement.type} and column type = $cellType")
-                        aggToColumnInfo[agg] = ColumnInfo(cellType, "${aggStatement.type}(${aggStatement.fieldName})", indexedAggStatements.size + i)
                         agg.process(row.getCellTyped(aggStatement.fieldName)!!)
-                        agg
-                    }.toList()
+                        initAggList.add(agg)
+                    }
+                    if (aggToColumnInfo.isEmpty()) {
+                        for (i in 0 until aggStatements.size) {
+                            val aggStatement = aggStatements[i]
+                            val type = row.getCellType(aggStatement.fieldName)!!
+                            aggToColumnInfo.add(ColumnInfo(type, aggStatement.fullFieldName, plainStatements.size + i + 1))
+                        }
+                    }
+                    initAggList
                 }
             }
         }
-        if (groupByBuckets.isEmpty()) {
-            return DatasetResult(emptyList())
-        }
-
-
         val newColumnInfo = {
-            val firstResult: MutableMap.MutableEntry<List<String>, List<AggregateFunction<Any, Any>>> = groupByBuckets.entries.first()
-            val firstPart = rows.rows.first().columnInfo.filter { firstResult.key.contains(it.fieldName) }
-            val secondPart = firstResult.value.map { aggToColumnInfo[it]!! }
             val res = mutableListOf<ColumnInfo>()
-            res.addAll(firstPart)
-            res.addAll(secondPart)
+            res.addAll(plainToColumnInfo)
+            res.addAll(aggToColumnInfo)
             res
         }()
 
+        if (groupByBuckets.isEmpty()) {
+            return DatasetResult(emptyList(), newColumnInfo)
+        }
 
         val newRows = mutableListOf<DatasetRow>()
         var rowNum = 0
         for ((fixedFields, aggregates) in groupByBuckets) {
             val columns = mutableListOf<String>()
-            for (fieldName in fixedFields) {
-                columns.add(fieldName)
+            for (bucketField in fixedFields) {
+                columns.add(bucketField.second)
             }
             for (agg in aggregates) {
                 columns.add(agg.toText())
             }
             newRows.add(DatasetRow(rowNum++, columns, newColumnInfo))
         }
-        return DatasetResult(newRows)
+        return DatasetResult(newRows, newColumnInfo)
     }
 
     private fun fieldNotFound(name: String): Nothing {
@@ -227,7 +237,8 @@ class SqlExecutor {
     }
 
     private fun applyOrderBy(orderByStmt: OrderByPlanDescription, dataset: DatasetResult): DatasetResult {
-        val f = { row: DatasetRow -> row.getCell(orderByStmt.field) ?: fieldNotFound(orderByStmt.field) }
+        val fieldName = orderByStmt.field.fullFieldName
+        val f = { row: DatasetRow -> row.getCell(fieldName) ?: fieldNotFound(fieldName) }
         val newRows = if (orderByStmt.desc) {
             dataset.rows.sortedByDescending(f)
         } else {
@@ -243,6 +254,8 @@ class SqlExecutor {
 
 @Suppress("UNCHECKED_CAST")
 val AGGREGATES_MAPPING: Map<Pair<String, FieldType>, AggregateFunctionFactory<Any, Any>> = mapOf(
+        Pair(Pair("min", FieldType.INTEGER), Aggregates.MIN_INT as AggregateFunctionFactory<Any, Any>),
+        Pair(Pair("min", FieldType.FLOAT), Aggregates.MIN_FLOAT as AggregateFunctionFactory<Any, Any>),
         Pair(Pair("max", FieldType.INTEGER), Aggregates.MAX_INT as AggregateFunctionFactory<Any, Any>),
         Pair(Pair("max", FieldType.FLOAT), Aggregates.MAX_FLOAT as AggregateFunctionFactory<Any, Any>),
         Pair(Pair("sum", FieldType.INTEGER), Aggregates.SUM_INT as AggregateFunctionFactory<Any, Any>),

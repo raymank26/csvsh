@@ -33,9 +33,9 @@ class SqlPlannerTest : SqlTestUtils {
         val planDescription: SqlPlan = makePlan(
                 "SELECT a,b, MAX(c) FROM './a' GROUP BY a,b WHERE a < 5 ORDER BY b DESC LIMIT 9", getDefaultDatasetFactory())
         assertEquals(listOf("a", "b"), planDescription.groupByFields)
-        assertEquals(OrderByPlanDescription("b", true), planDescription.orderByPlanDescription)
+        assertEquals(OrderByPlanDescription(SelectFieldExpr("b"), true), planDescription.orderByPlanDescription)
         assertEquals(9, planDescription.limit)
-        assertEquals(listOf(SelectFieldExpr("a"), SelectFieldExpr("b"), AggSelectExpr("MAX", "c")), planDescription.selectStatements)
+        assertEquals(listOf(SelectFieldExpr("a"), SelectFieldExpr("b"), AggSelectExpr("max", "c")), planDescription.selectStatements)
     }
 
     @Test

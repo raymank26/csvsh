@@ -1,5 +1,3 @@
-import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
-
 plugins {
     id("org.jetbrains.kotlin.jvm").version("1.3.11")
 
@@ -18,6 +16,8 @@ dependencies {
     implementation("org.apache.commons:commons-csv:1.6")
 
     implementation("org.mapdb:mapdb:3.0.7")
+
+    implementation("com.jakewharton.fliptables:fliptables:1.0.2")
 
     testImplementation("org.jetbrains.kotlin:kotlin-test")
 

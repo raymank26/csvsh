@@ -21,7 +21,7 @@ class ServiceStatementsExecutor {
         val indexFile = csvPathToIndexFile(csvPath)
         val csvReader = datasetReaderFactory.getReader(csvPath)
                 ?: throw PlannerException("No csv found for path = $csvPath")
-        val fields: List<ColumnInfo> = csvReader.getColumnInfo()
+        val fields: List<ColumnInfo> = csvReader.columnInfo
 
         val columnInfo: ColumnInfo = fields.find { it.fieldName == fieldName }!!
 
@@ -102,7 +102,7 @@ class ServiceStatementsExecutor {
 
     fun describeTable(ctx: SqlParser.DescribeContext, readerFactory: DatasetReaderFactory): List<ColumnInfo> {
         val csvPath = Paths.get(ctx.table().text)
-        return readerFactory.getReader(csvPath)?.getColumnInfo()
+        return readerFactory.getReader(csvPath)?.columnInfo
                 ?: throw PlannerException("No csv found for path = $csvPath")
     }
 }

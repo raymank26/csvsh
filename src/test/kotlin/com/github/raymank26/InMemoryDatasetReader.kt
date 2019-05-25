@@ -46,14 +46,10 @@ class InMemoryIndex<T>(private val fieldType: FieldType, private val inMemoryInd
 /**
  * Date: 2019-05-20.
  */
-class InMemoryDatasetReader(private val columnInfoField: List<ColumnInfo>,
+class InMemoryDatasetReader(override val columnInfo: List<ColumnInfo>,
                             private val datasetRows: List<DatasetRow>,
-                            private val availableIndexes: List<IndexDescriptionAndPath>) : DatasetReader {
+                            override val availableIndexes: List<IndexDescriptionAndPath>) : DatasetReader {
     override fun close() {
-    }
-
-    override fun availableIndexes(): List<IndexDescriptionAndPath> {
-        return availableIndexes
     }
 
     override fun read(handle: (row: DatasetRow) -> Unit, limit: Int?) {
@@ -64,9 +60,5 @@ class InMemoryDatasetReader(private val columnInfoField: List<ColumnInfo>,
                 it
             }
         }.forEach(handle)
-    }
-
-    override fun getColumnInfo(): List<ColumnInfo> {
-        return columnInfoField
     }
 }

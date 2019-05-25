@@ -13,7 +13,7 @@ class SqlPlanner {
         val tablePath = Paths.get(sqlAst.table().IDENTIFIER_Q().text.drop(1).dropLast(1))
         val reader = datasetReaderFactory.getReader(tablePath)
                 ?: throw PlannerException("Unable to find input for path = $tablePath")
-        val sqlWherePlan = sqlAst.whereExpr()?.let { SqlWhereVisitor(reader.availableIndexes()).visit(it) }
+        val sqlWherePlan = sqlAst.whereExpr()?.let { SqlWhereVisitor(reader.availableIndexes).visit(it) }
         val selectStatements: List<SelectStatementExpr> = if (sqlAst.selectExpr().allColumns() != null) {
             emptyList()
         } else {
@@ -22,7 +22,7 @@ class SqlPlanner {
         val groupByFields: List<String> = getGroupByExpression(sqlAst, selectStatements)
 
         val orderBy = sqlAst.orderByExpr()?.let {
-            val ref = it.reference().IDENTIFIER().text
+            val ref = SqlSelectColumnVisitor().visit(it.selectColumn())
             OrderByPlanDescription(ref, it.DESC()?.let { true } ?: false)
         }
         val limit = sqlAst.limitExpr()?.INTEGER()?.text?.toInt()?.apply {
@@ -178,6 +178,6 @@ private class SqlSelectColumnVisitor : SqlBaseVisitor<SelectStatementExpr>() {
     }
 
     override fun visitSelectColumnAgg(ctx: SqlParser.SelectColumnAggContext): SelectStatementExpr {
-        return AggSelectExpr(ctx.AGG().text, ctx.reference().text)
+        return AggSelectExpr(ctx.AGG().text.toLowerCase(), ctx.reference().text)
     }
 }
