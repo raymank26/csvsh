@@ -74,23 +74,17 @@ class ServiceStatementsExecutor {
         val result = mutableListOf<IndexDescriptionAndPath>()
         for (name in db.getAllNames()) {
             val (indexName, fieldName, fieldTypeMark) = name.split("|")
-            val fieldType = FieldType.MARK_TO_FIELD_TYPE[fieldTypeMark.toByte()] ?:
-                throw RuntimeException("Unable to get fieldType")
-            @Suppress("UNCHECKED_CAST")
-            val readOnlyIndex: ReadOnlyIndex<Any> = when (fieldType) {
-                FieldType.INTEGER -> {
-                    val tm = db.treeMap(name, Serializer.INTEGER, Serializer.INT_ARRAY).open()
-                    MapDBReadonlyIndex(tm, FieldType.INTEGER) as ReadOnlyIndex<Any>
-                }
-                FieldType.FLOAT -> {
-                    val tm = db.treeMap(name, Serializer.FLOAT, Serializer.INT_ARRAY).open()
-                    MapDBReadonlyIndex(tm, FieldType.FLOAT) as ReadOnlyIndex<Any>
-                }
-                FieldType.STRING -> {
-                    val tm = db.treeMap(name, Serializer.STRING, Serializer.INT_ARRAY).open()
-                    MapDBReadonlyIndex(tm, FieldType.FLOAT) as ReadOnlyIndex<Any>
-                }
+
+            val byteMark = fieldTypeMark.toByte()
+            val serializer = when (FieldType.MARK_TO_FIELD_TYPE[byteMark]) {
+                FieldType.INTEGER -> Serializer.INTEGER
+                FieldType.FLOAT -> Serializer.FLOAT
+                FieldType.STRING -> Serializer.STRING
+                else -> throw RuntimeException("Unable to get field type by mark = $byteMark")
             }
+            val tm = db.treeMap(name, serializer, Serializer.INT_ARRAY).open()
+            @Suppress("UNCHECKED_CAST")
+            val readOnlyIndex = MapDBReadonlyIndex(tm as BTreeMap<in Any, IntArray>, FieldType.INTEGER)
             result.add(IndexDescriptionAndPath(IndexDescription(indexName, fieldName), readOnlyIndex))
         }
         return result

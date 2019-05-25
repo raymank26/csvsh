@@ -9,34 +9,30 @@ class InMemoryDatasetFactory(private val datasetReader: DatasetReader) : Dataset
     }
 }
 
-class InMemoryIndex<T>(private val fieldType: FieldType, private val inMemoryIndex: NavigableMap<T, List<Int>>) : ReadOnlyIndex<T> {
+class InMemoryIndex(override val type: FieldType, private val inMemoryIndex: NavigableMap<Any, List<Int>>) : ReadOnlyIndex {
 
-    override fun moreThan(from: T): Set<Int> {
-        return inMemoryIndex.tailMap(from, false).values.flatten().toSet()
+    override fun moreThan(from: SqlValueAtom): Set<Int> {
+        return inMemoryIndex.tailMap(from.asValue, false).values.flatten().toSet()
     }
 
-    override fun moreThanEq(fromInclusive: T): Set<Int> {
-        return inMemoryIndex.tailMap(fromInclusive, true).values.flatten().toSet()
+    override fun moreThanEq(fromInclusive: SqlValueAtom): Set<Int> {
+        return inMemoryIndex.tailMap(fromInclusive.asValue, true).values.flatten().toSet()
     }
 
-    override fun lessThan(to: T): Set<Int> {
-        return inMemoryIndex.headMap(to, false).values.flatten().toSet()
+    override fun lessThan(to: SqlValueAtom): Set<Int> {
+        return inMemoryIndex.headMap(to.asValue, false).values.flatten().toSet()
     }
 
-    override fun lessThanEq(toInclusive: T): Set<Int> {
-        return inMemoryIndex.headMap(toInclusive, true).values.flatten().toSet()
+    override fun lessThanEq(toInclusive: SqlValueAtom): Set<Int> {
+        return inMemoryIndex.headMap(toInclusive.asValue, true).values.flatten().toSet()
     }
 
-    override fun eq(value: T): Set<Int> {
-        return inMemoryIndex[value]?.toSet() ?: emptySet()
+    override fun eq(value: SqlValueAtom): Set<Int> {
+        return inMemoryIndex[value.asValue]?.toSet() ?: emptySet()
     }
 
-    override fun inRange(list: List<T>): Set<Int> {
+    override fun inRange(list: ListValue): Set<Int> {
         return emptySet()
-    }
-
-    override fun getType(): FieldType {
-        return fieldType
     }
 
     override fun close() {

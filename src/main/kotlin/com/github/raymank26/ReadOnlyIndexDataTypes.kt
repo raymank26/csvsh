@@ -3,47 +3,45 @@ package com.github.raymank26
 import org.mapdb.BTreeMap
 import java.util.NavigableMap
 
-interface ReadOnlyIndex<T> : AutoCloseable {
-    fun moreThan(from: T): Set<Int>
-    fun moreThanEq(fromInclusive: T): Set<Int>
-    fun lessThan(to: T): Set<Int>
-    fun lessThanEq(toInclusive: T): Set<Int>
-    fun eq(value: T): Set<Int>
-    fun inRange(list: List<T>): Set<Int>
-    fun getType(): FieldType
+interface ReadOnlyIndex : AutoCloseable {
+    val type: FieldType
+
+    fun moreThan(from: SqlValueAtom): Set<Int>
+    fun moreThanEq(fromInclusive: SqlValueAtom): Set<Int>
+    fun lessThan(to: SqlValueAtom): Set<Int>
+    fun lessThanEq(toInclusive: SqlValueAtom): Set<Int>
+    fun eq(value: SqlValueAtom): Set<Int>
+    fun inRange(list: ListValue): Set<Int>
 }
 
-class MapDBReadonlyIndex<T>(
-        private val bTreeMap: BTreeMap<T, IntArray>,
-        private val fieldType: FieldType) : ReadOnlyIndex<T> {
-    override fun getType(): FieldType {
-        return fieldType
+class MapDBReadonlyIndex(
+        private val bTreeMap: BTreeMap<in Any, IntArray>,
+        override val type: FieldType) : ReadOnlyIndex {
+
+    override fun moreThan(from: SqlValueAtom): Set<Int> {
+        return bTreeToBitSet(bTreeMap.tailMap(from.asValue, false))
     }
 
-    override fun moreThan(from: T): Set<Int> {
-        return bTreeToBitSet(bTreeMap.tailMap(from, false))
+    override fun moreThanEq(fromInclusive: SqlValueAtom): Set<Int> {
+        return bTreeToBitSet(bTreeMap.tailMap(fromInclusive.asValue, true))
     }
 
-    override fun moreThanEq(fromInclusive: T): Set<Int> {
-        return bTreeToBitSet(bTreeMap.tailMap(fromInclusive, true))
+    override fun lessThan(to: SqlValueAtom): Set<Int> {
+        return bTreeToBitSet(bTreeMap.headMap(to.asValue, false))
     }
 
-    override fun lessThan(to: T): Set<Int> {
-        return bTreeToBitSet(bTreeMap.headMap(to, false))
+    override fun lessThanEq(toInclusive: SqlValueAtom): Set<Int> {
+        return bTreeToBitSet(bTreeMap.headMap(toInclusive.asValue, true))
     }
 
-    override fun lessThanEq(toInclusive: T): Set<Int> {
-        return bTreeToBitSet(bTreeMap.headMap(toInclusive, true))
+    override fun eq(value: SqlValueAtom): Set<Int> {
+        return bTreeMap[value.asValue]?.toSet() ?: emptySet()
     }
 
-    override fun eq(value: T): Set<Int> {
-        return bTreeMap[value]?.toSet() ?: emptySet()
-    }
-
-    override fun inRange(list: List<T>): Set<Int> {
+    override fun inRange(list: ListValue): Set<Int> {
         val bs = mutableSetOf<Int>()
-        for (elem in list) {
-            bTreeMap[elem]?.forEach { rowNum ->
+        for (elem in list.value) {
+            bTreeMap[elem.asValue]?.forEach { rowNum ->
                 bs.add(rowNum)
             }
         }

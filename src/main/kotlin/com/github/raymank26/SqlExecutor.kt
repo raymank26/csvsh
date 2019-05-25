@@ -47,55 +47,21 @@ class SqlExecutor {
 
     private fun evalOverIndex(sqlPlan: SqlPlan, indexName: String, expressions: List<ExpressionAtom>): Map<ExpressionAtom, Set<Int>> {
         val index = requireNotNull(sqlPlan.datasetReader.availableIndexes.find { it.description.name == indexName }?.indexContent) { "Unable to find index for name = $indexName" }
-        val fieldType = index.getType()
 
         val result = mutableMapOf<ExpressionAtom, Set<Int>>()
         for (expression in expressions) {
-            val rowsFound = when (fieldType) {
-                FieldType.INTEGER -> {
-                    val right = lazy { (expression.rightVal as IntValue).value }
-                    val rightAsList = lazy { (expression.rightVal as ListValue).value.map { (it as IntValue).value } }
-                    @Suppress("UNCHECKED_CAST") val integerIndex = index as ReadOnlyIndex<Int>
-                    when (val op = expression.operator) {
-                        Operator.LESS_THAN -> integerIndex.lessThan(right.value)
-                        Operator.LESS_EQ_THAN -> integerIndex.lessThanEq(right.value)
-                        Operator.GREATER_THAN -> integerIndex.moreThan(right.value)
-                        Operator.GREATER_EQ_THAN -> integerIndex.moreThanEq(right.value)
-                        Operator.EQ -> integerIndex.eq(right.value)
-                        Operator.IN -> integerIndex.inRange(rightAsList.value)
-                        else -> throw RuntimeException("Unable to exec op = $op")
-                    }
-                }
-                FieldType.FLOAT -> {
-                    val right = lazy { (expression.rightVal as FloatValue).value }
-                    val rightAsList = lazy { (expression.rightVal as ListValue).value.map { (it as FloatValue).value } }
-                    @Suppress("UNCHECKED_CAST") val floatIndex = index as ReadOnlyIndex<Float>
-                    when (val op = expression.operator) {
-                        Operator.LESS_THAN -> floatIndex.lessThan(right.value)
-                        Operator.LESS_EQ_THAN -> floatIndex.lessThanEq(right.value)
-                        Operator.GREATER_THAN -> floatIndex.moreThan(right.value)
-                        Operator.GREATER_EQ_THAN -> floatIndex.moreThanEq(right.value)
-                        Operator.EQ -> floatIndex.moreThanEq(right.value)
-                        Operator.IN -> floatIndex.inRange(rightAsList.value)
-                        else -> throw RuntimeException("Unable to exec op = $op")
-                    }
-                }
-                FieldType.STRING -> {
-                    val right = (expression.rightVal as StringValue).value
-                    val rightAsList = lazy { (expression.rightVal as ListValue).value.map { (it as StringValue).value } }
-                    @Suppress("UNCHECKED_CAST") val integerIndex = index as ReadOnlyIndex<String>
-                    when (val op = expression.operator) {
-                        Operator.LESS_THAN -> integerIndex.lessThan(right)
-                        Operator.LESS_EQ_THAN -> integerIndex.lessThanEq(right)
-                        Operator.GREATER_THAN -> integerIndex.moreThan(right)
-                        Operator.GREATER_EQ_THAN -> integerIndex.moreThanEq(right)
-                        Operator.EQ -> integerIndex.eq(right)
-                        Operator.IN -> integerIndex.inRange(rightAsList.value)
-                        else -> throw RuntimeException("Unable to exec op = $op")
-                    }
-                }
+            val right = expression.rightVal
+            val op = expression.operator
+
+            result[expression] = when {
+                op == Operator.LESS_THAN && right is SqlValueAtom -> index.lessThan(right)
+                op == Operator.LESS_EQ_THAN && right is SqlValueAtom -> index.lessThanEq(right)
+                op == Operator.GREATER_THAN && right is SqlValueAtom -> index.moreThan(right)
+                op == Operator.GREATER_EQ_THAN && right is SqlValueAtom -> index.moreThanEq(right)
+                op == Operator.EQ && right is SqlValueAtom -> index.eq(right)
+                op == Operator.IN && right is ListValue -> index.inRange(right)
+                else -> throw RuntimeException("Unable to exec op = $op")
             }
-            result[expression] = rowsFound
         }
         return result
     }
