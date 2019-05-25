@@ -26,34 +26,28 @@ class CsvDatasetReaderFactory(private val indexesLoader: (Path) -> List<IndexDes
 data class DatasetResult(val rows: List<DatasetRow>, val columnInfo: List<ColumnInfo>)
 
 data class DatasetRow(val rowNum: Int,
-                      val columns: List<String>,
+                      val columns: List<SqlValueAtom>,
                       val columnInfo: List<ColumnInfo>) {
 
     private val fieldNameToInfo = lazy { columnInfo.associateBy { it.fieldName } }
 
-    fun getCell(fieldName: String): String? {
+    fun getCell(fieldName: String): SqlValueAtom {
         return fieldNameToInfo.value[fieldName]?.let {
             columns[it.position]
-        }
-    }
-
-    fun getCellTyped(fieldName: String): Comparable<Any>? {
-        @Suppress("UNCHECKED_CAST")
-        return when (getCellType(fieldName)) {
-            FieldType.INTEGER -> getCell(fieldName)?.toInt() as? Comparable<Any>
-            FieldType.FLOAT -> getCell(fieldName)?.toFloat() as? Comparable<Any>
-            FieldType.STRING -> getCell(fieldName) as? Comparable<Any>
-            null -> null
-        }
+        } ?: fieldNotFound(fieldName)
     }
 
     fun getCellType(fieldName: String): FieldType? {
-        return fieldNameToInfo.value[fieldName]?.type
+        return getCell(fieldName).type
     }
 
     fun getColumnInfo(fieldName: String): ColumnInfo? {
         return fieldNameToInfo.value[fieldName]
     }
+}
+
+private fun fieldNotFound(name: String): Nothing {
+    throw ExecutorException("Field \"$name\" is not found")
 }
 
 interface DatasetReader : AutoCloseable {
@@ -70,10 +64,10 @@ class CsvDatasetReader(private val csvFormat: CSVFormat,
     override val columnInfo = getColumnInfoInner()
 
     override fun read(handle: (csvRow: DatasetRow) -> Unit, limit: Int?) {
-        readInner(limit, true, handle)
+        readInner(limit, true, { rowNum, columns -> DatasetRow(rowNum, columns.mapIndexed { index, s -> createSqlAtom(s, columnInfo[index].type) }, columnInfo) }, handle)
     }
 
-    private fun readInner(limit: Int?, skipHeader: Boolean, handle: (csvRow: DatasetRow) -> Unit) {
+    private fun <T> readInner(limit: Int?, skipHeader: Boolean, mapper: (Int, List<String>) -> T, handle: (csvRow: T) -> Unit) {
         var headerSkipped = skipHeader
         val columnNames = columnInfo.map { it.fieldName }
         CSVParser(BufferedReader(FileReader(csvPath.toFile())), csvFormat).use {
@@ -91,7 +85,7 @@ class CsvDatasetReader(private val csvFormat: CSVFormat,
                     val rowValue = csvLine.get(header)
                     columns.add(rowValue)
                 }
-                handle(DatasetRow(rowNum++, columns, columnInfo))
+                handle(mapper(rowNum++, columns))
                 if (limit != null && limit == rowNum) {
                     return@use
                 }
@@ -100,15 +94,13 @@ class CsvDatasetReader(private val csvFormat: CSVFormat,
     }
 
     private fun getColumnInfoInner(): List<ColumnInfo> {
-        var row: DatasetRow? = null
-        this.read({
-            row = it
-        }, limit = 1)
+        var row: List<String>? = null
+        this.readInner(1, true, { _, columns -> columns }, { row = it })
         if (row == null) {
             return emptyList()
         }
         val result = mutableListOf<ColumnInfo>()
-        row!!.columns.forEachIndexed { i, columnName ->
+        row!!.forEachIndexed { i, columnName ->
             val fieldType: FieldType = when {
                 columnName.contains('.') && columnName.toFloatOrNull() != null -> FieldType.FLOAT
                 columnName.toIntOrNull() != null -> FieldType.INTEGER
@@ -123,35 +115,41 @@ class CsvDatasetReader(private val csvFormat: CSVFormat,
     }
 }
 
-data class ColumnInfo(val type: FieldType, val fieldName: String, val position: Int)
-
-interface AggregateFunction<in T, out T2> {
-    fun process(value: T)
-    fun getResult(): T2
-    fun toText(): String {
-        return getResult().toString()
+fun createSqlAtom(value: String, type: FieldType): SqlValueAtom {
+    return when (type) {
+        FieldType.INTEGER -> IntValue(value.toInt())
+        FieldType.FLOAT -> FloatValue(value.toFloat())
+        FieldType.STRING -> StringValue(value)
     }
 }
 
-class AggregateFunctionImpl<in T, out T2>(private var initial: T2, private val agg: (T2, T) -> T2) : AggregateFunction<T, T2> {
 
-    override fun process(value: T) {
-        initial = agg(initial, value)
+data class ColumnInfo(val type: FieldType, val fieldName: String, val position: Int)
+
+interface AggregateFunction {
+    fun process(value: SqlValueAtom)
+    fun getResult(): SqlValueAtom
+}
+
+class AggregateFunctionImpl(private var initial: SqlValueAtom, private val agg: (SqlValueAtom, SqlValueAtom) -> SqlValueAtom) : AggregateFunction {
+
+    override fun process(value: SqlValueAtom) {
+        initial = agg.invoke(initial, value)
     }
 
-    override fun getResult(): T2 {
+    override fun getResult(): SqlValueAtom {
         return initial
     }
 }
 
-typealias AggregateFunctionFactory<T1, T2> = () -> AggregateFunction<T1, T2>
+typealias AggregateFunctionFactory = () -> AggregateFunction
 
 object Aggregates {
-    val SUM_INT: AggregateFunctionFactory<Int, Int> = { AggregateFunctionImpl(0, { a, b -> a + b }) }
-    val SUM_FLOAT: AggregateFunctionFactory<Float, Float> = { AggregateFunctionImpl(0.0.toFloat(), { a, b -> a + b }) }
-    val COUNT_ANY: AggregateFunctionFactory<Any, Int> = { AggregateFunctionImpl(0, { a, _ -> a + 1 }) }
-    val MAX_INT: AggregateFunctionFactory<Int, Int> = { AggregateFunctionImpl(Int.MIN_VALUE, { a, b -> Math.max(a, b) }) }
-    val MIN_INT: AggregateFunctionFactory<Int, Int> = { AggregateFunctionImpl(Int.MAX_VALUE, { a, b -> Math.min(a, b) }) }
-    val MAX_FLOAT: AggregateFunctionFactory<Float, Float> = { AggregateFunctionImpl(Float.MIN_VALUE, { a, b -> Math.max(a, b) }) }
-    val MIN_FLOAT: AggregateFunctionFactory<Float, Float> = { AggregateFunctionImpl(Float.MAX_VALUE, { a, b -> Math.min(a, b) }) }
+    val SUM_INT: AggregateFunctionFactory = { AggregateFunctionImpl(IntValue(0), SqlValueAtom::plus) }
+    val SUM_FLOAT: AggregateFunctionFactory = { AggregateFunctionImpl(FloatValue(0.toFloat()), SqlValueAtom::plus) }
+    val COUNT_ANY: AggregateFunctionFactory = { AggregateFunctionImpl(IntValue(0)) { a, _ -> a plus IntValue(1) } }
+    val MAX_INT: AggregateFunctionFactory = { AggregateFunctionImpl(IntValue(Int.MIN_VALUE), SqlValueAtom::max) }
+    val MIN_INT: AggregateFunctionFactory = { AggregateFunctionImpl(IntValue(Int.MAX_VALUE), SqlValueAtom::min) }
+    val MAX_FLOAT: AggregateFunctionFactory = { AggregateFunctionImpl(FloatValue(Float.MIN_VALUE), SqlValueAtom::max) }
+    val MIN_FLOAT: AggregateFunctionFactory = { AggregateFunctionImpl(FloatValue(Float.MAX_VALUE), SqlValueAtom::min) }
 }

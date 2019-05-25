@@ -15,18 +15,28 @@ private val columnInfos = listOf(
         ColumnInfo(FieldType.STRING, "a", 0),
         ColumnInfo(FieldType.INTEGER, "b", 1)
 )
-val datasetRows = listOf(
-        DatasetRow(0, listOf("foobar", "1"), columnInfos),
-        DatasetRow(1, listOf("baz", "10"), columnInfos),
-        DatasetRow(2, listOf("baz", "11"), columnInfos)
-)
+val datasetRows = createDataset(listOf(
+        listOf("foobar", "1"),
+        listOf("baz", "10"),
+        listOf("baz", "11"),
+        listOf("bazz", "2")
+), columnInfos)
+
+fun createDataset(listOf: List<List<String>>, columnInfo: List<ColumnInfo>): List<DatasetRow> {
+    return listOf.mapIndexed { rowNum, columns ->
+        val sqlColumns = columns.mapIndexed { i, column ->
+            createSqlAtom(column, columnInfo[i].type)
+        }
+        return@mapIndexed DatasetRow(rowNum, sqlColumns, columnInfo)
+    }
+}
 
 private val availableIndexes = listOf(
         createIndexBy(datasetRows, IndexDescription(name = "aIndex", fieldName = "a")),
         createIndexBy(datasetRows, IndexDescription(name = "bIndex", fieldName = "b"))
 )
 
-private val dataset = InMemoryDatasetReader(
+private val datasetReader = InMemoryDatasetReader(
         columnInfo = columnInfos,
         datasetRows = datasetRows,
         availableIndexes = availableIndexes
@@ -38,7 +48,7 @@ private fun createIndexBy(rows: List<DatasetRow>, indexDescription: IndexDescrip
     }
     val index = TreeMap<Any, MutableList<Int>>()
     for (row in rows) {
-        val key = row.getCellTyped(indexDescription.fieldName) ?: throw RuntimeException("Field not found")
+        val key = row.getCell(indexDescription.fieldName).asValue
         index.compute(key) { _, prev ->
             return@compute if (prev == null) {
                 mutableListOf(row.rowNum)
@@ -52,7 +62,7 @@ private fun createIndexBy(rows: List<DatasetRow>, indexDescription: IndexDescrip
     return IndexDescriptionAndPath(indexDescription, InMemoryIndex(fieldType, index as NavigableMap<Any, List<Int>>))
 }
 
-private val datasetFactory = InMemoryDatasetFactory(dataset)
+private val datasetFactory = InMemoryDatasetFactory(datasetReader)
 
 interface SqlTestUtils {
 

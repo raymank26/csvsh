@@ -88,16 +88,14 @@ private class SqlWhereVisitor(private val availableIndexes: List<IndexDescriptio
                 ?: throw PlannerException("Left variable has to be table field")
 
         val others = ctx.variable().drop(1)
-        var type: Class<*>? = null
-        val variables: MutableList<SqlValue> = mutableListOf()
+        var type: FieldType? = null
+        val variables: MutableList<SqlValueAtom> = mutableListOf()
         for (variable in others) {
-            val parsedVariable = parseVariable(variable)
-            if (parsedVariable is RefValue) {
-                throw RuntimeException("Expression in IN clause mustn't be field")
-            }
+            val parsedVariable = parseVariable(variable) as? SqlValueAtom
+                    ?: throw PlannerException("Lists have to hold only non ref expressions")
             if (type == null) {
-                type = parsedVariable.javaClass
-            } else if (type != parsedVariable.javaClass) {
+                type = parsedVariable.type
+            } else if (type != parsedVariable.type) {
                 throw RuntimeException("IN clause has different types")
             }
             variables.add(parsedVariable)

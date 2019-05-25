@@ -46,7 +46,7 @@ class ServiceStatementsExecutor {
             indexContent.clear()
 
             csvReader.read({ row ->
-                val fieldValue: Any = row.getCellTyped(fieldName)!!
+                val fieldValue: Any = row.getCell(fieldName).asValue
                 indexContent.compute(fieldValue) { _: Any, positions: IntArray? ->
                     if (positions == null) {
                         IntArray(1).apply { this[0] = row.rowNum }
