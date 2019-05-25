@@ -22,7 +22,7 @@ class SqlExecutorTest : SqlTestUtils {
 
     @Test
     fun testGroupBy() {
-        val dataset = executeSelect("SELECT a, SUM(b), MIN(b), MAX(b), COUNT(b) FROM 'a' GROUP BY a ORDER BY SUM(b) desc", getDefaultDatasetFactory())
+        val dataset = executeSelect("SELECT a, SUM(b), MIN(b), MAX(b), COUNT(b) FROM 'a' GROUP BY a ORDER BY SUM(b)", getDefaultDatasetFactory())
         println(prettifyDataset(dataset))
     }
 }
