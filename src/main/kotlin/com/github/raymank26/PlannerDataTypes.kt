@@ -73,11 +73,11 @@ open class BaseExpressionVisitor<T> {
         return combine(node.left.accept(this), node.right.accept(this))
     }
 
-    protected fun default(): T? {
+    protected open fun default(): T? {
         return null
     }
 
-    protected fun combine(left: T?, right: T?): T? {
+    protected open fun combine(left: T?, right: T?): T? {
         return right
     }
 }

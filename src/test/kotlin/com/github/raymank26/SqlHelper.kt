@@ -22,6 +22,19 @@ val datasetRows = createDataset(listOf(
         listOf("bazz", "2")
 ), columnInfos)
 
+private val availableIndexes = listOf(
+        createIndex(datasetRows, IndexDescription(name = "aIndex", fieldName = "a")),
+        createIndex(datasetRows, IndexDescription(name = "bIndex", fieldName = "b"))
+)
+
+private val datasetReader = InMemoryDatasetReader(
+        columnInfo = columnInfos,
+        datasetRows = datasetRows,
+        availableIndexes = availableIndexes
+)
+
+private val datasetFactory = InMemoryDatasetFactory(datasetReader)
+
 fun createDataset(listOf: List<List<String>>, columnInfo: List<ColumnInfo>): List<DatasetRow> {
     return listOf.mapIndexed { rowNum, columns ->
         val sqlColumns = columns.mapIndexed { i, column ->
@@ -31,18 +44,7 @@ fun createDataset(listOf: List<List<String>>, columnInfo: List<ColumnInfo>): Lis
     }
 }
 
-private val availableIndexes = listOf(
-        createIndexBy(datasetRows, IndexDescription(name = "aIndex", fieldName = "a")),
-        createIndexBy(datasetRows, IndexDescription(name = "bIndex", fieldName = "b"))
-)
-
-private val datasetReader = InMemoryDatasetReader(
-        columnInfo = columnInfos,
-        datasetRows = datasetRows,
-        availableIndexes = availableIndexes
-)
-
-private fun createIndexBy(rows: List<DatasetRow>, indexDescription: IndexDescription): IndexDescriptionAndPath {
+private fun createIndex(rows: List<DatasetRow>, indexDescription: IndexDescription): IndexDescriptionAndPath {
     if (rows.isEmpty()) {
         throw RuntimeException("Empty rows passed")
     }
@@ -50,7 +52,7 @@ private fun createIndexBy(rows: List<DatasetRow>, indexDescription: IndexDescrip
     for (row in rows) {
         val key = row.getCell(indexDescription.fieldName).asValue
         index.compute(key) { _, prev ->
-            return@compute if (prev == null) {
+            if (prev == null) {
                 mutableListOf(row.rowNum)
             } else {
                 prev.add(row.rowNum)
@@ -58,11 +60,10 @@ private fun createIndexBy(rows: List<DatasetRow>, indexDescription: IndexDescrip
             }
         }
     }
-    val fieldType = rows.first().getCellType(indexDescription.fieldName) ?: throw RuntimeException("Field not found")
+    val fieldType = rows.first().getCellType(indexDescription.fieldName)
+    @Suppress("UNCHECKED_CAST")
     return IndexDescriptionAndPath(indexDescription, InMemoryIndex(fieldType, index as NavigableMap<Any, List<Int>>))
 }
-
-private val datasetFactory = InMemoryDatasetFactory(datasetReader)
 
 interface SqlTestUtils {
 

@@ -151,7 +151,7 @@ class SqlExecutor {
                     if (aggToColumnInfo.isEmpty()) {
                         for (i in 0 until aggStatements.size) {
                             val aggStatement = aggStatements[i]
-                            val type = row.getCellType(aggStatement.fieldName)!!
+                            val type = row.getCellType(aggStatement.fieldName)
                             aggToColumnInfo.add(ColumnInfo(type, aggStatement.fullFieldName, plainStatements.size + i + 1))
                         }
                     }
@@ -183,10 +183,6 @@ class SqlExecutor {
             newRows.add(DatasetRow(rowNum++, columns, newColumnInfo))
         }
         return DatasetResult(newRows, newColumnInfo)
-    }
-
-    private fun fieldNotFound(name: String): Nothing {
-        throw ExecutorException("Field \"$name\" is not found")
     }
 
     private fun applyOrderBy(orderByStmt: OrderByPlanDescription, dataset: DatasetResult): DatasetResult {

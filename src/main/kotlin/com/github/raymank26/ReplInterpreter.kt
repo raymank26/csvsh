@@ -25,7 +25,11 @@ class ReplInterpreter {
 
 fun prettifyDataset(dataset: DatasetResult): String {
     val header = dataset.columnInfo.map { it.fieldName }.toTypedArray()
-    val rows = dataset.rows.asSequence().take(20).map { it.columns.map { it.toText() }.toTypedArray() }.toList().toTypedArray()
+    val rows = dataset.rows.asSequence().take(20).map { row ->
+        row.columns.map { col ->
+            col.toText()
+        }.toTypedArray()
+    }.toList().toTypedArray()
 
     return FlipTable.of(header, rows)
 }

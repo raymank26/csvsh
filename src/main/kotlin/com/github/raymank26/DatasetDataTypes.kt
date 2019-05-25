@@ -37,7 +37,7 @@ data class DatasetRow(val rowNum: Int,
         } ?: fieldNotFound(fieldName)
     }
 
-    fun getCellType(fieldName: String): FieldType? {
+    fun getCellType(fieldName: String): FieldType {
         return getCell(fieldName).type
     }
 
