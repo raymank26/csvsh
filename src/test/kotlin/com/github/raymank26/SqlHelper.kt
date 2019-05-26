@@ -83,9 +83,7 @@ interface SqlTestUtils {
 
     fun executeSelect(sql: String, datasetReaderFactory: DatasetReaderFactory): DatasetResult {
         val plan = makePlan(sql, datasetReaderFactory)
-        return plan.datasetReader.use {
-            sqlExecutor.execute(plan)
-        }
+        return sqlExecutor.execute(plan)
     }
 
     fun testFailure(exceptionClazz: Class<*>? = null, r: () -> Unit) {

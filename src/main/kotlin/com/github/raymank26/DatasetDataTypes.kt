@@ -2,9 +2,12 @@ package com.github.raymank26
 
 import org.apache.commons.csv.CSVFormat
 import org.apache.commons.csv.CSVParser
+import org.apache.commons.csv.CSVRecord
 import java.io.BufferedReader
 import java.io.FileReader
+import java.io.Reader
 import java.nio.file.Path
+import java.util.Collections
 
 /**
  * Date: 2019-05-17.
@@ -51,68 +54,86 @@ private fun fieldNotFound(name: String): Nothing {
     throw ExecutorException("Field \"$name\" is not found")
 }
 
-interface DatasetReader : AutoCloseable {
+interface DatasetReader {
     val columnInfo: List<ColumnInfo>
     val availableIndexes: List<IndexDescriptionAndPath>
 
-    fun read(handle: (row: DatasetRow) -> Unit, limit: Int?)
+    fun getIterator(): ClosableIterator<DatasetRow>
+}
+
+class ClosableIterator<T>(private val iterator: Iterator<T>, private val resource: AutoCloseable?) : Iterator<T>, AutoCloseable {
+    override fun hasNext(): Boolean {
+        return iterator.hasNext()
+    }
+
+    override fun next(): T {
+        return iterator.next()
+    }
+
+    override fun close() {
+        resource?.close()
+    }
+
+    fun <T2> map(f: (T) -> T2): ClosableIterator<T2> {
+        if (!hasNext()) {
+            return ClosableIterator(Collections.emptyIterator<T2>(), resource)
+        }
+        return ClosableIterator(iterator.asSequence().map { v -> f(v) }.iterator(), resource)
+    }
 }
 
 class CsvDatasetReader(private val csvFormat: CSVFormat,
-                       private val csvPath: Path,
+                       private val readerFactory: () -> Reader,
                        override val availableIndexes: List<IndexDescriptionAndPath>) : DatasetReader {
 
     override val columnInfo = getColumnInfoInner()
 
-    override fun read(handle: (csvRow: DatasetRow) -> Unit, limit: Int?) {
-        readInner(limit, true, { rowNum, columns -> DatasetRow(rowNum, columns.mapIndexed { index, s -> createSqlAtom(s, columnInfo[index].type) }, columnInfo) }, handle)
+    constructor(csvFormat: CSVFormat, csvPath: Path, availableIndexes: List<IndexDescriptionAndPath>) :
+            this(csvFormat, { BufferedReader(FileReader(csvPath.toFile())) }, availableIndexes)
+
+    override fun getIterator(): ClosableIterator<DatasetRow> {
+        if (columnInfo.isEmpty()) {
+            return ClosableIterator(Collections.emptyIterator(), null)
+        }
+        return readInner(1, null).map { csvRecord ->
+            DatasetRow(csvRecord.recordNumber.toInt(), columnInfo.mapIndexed { i, col -> createSqlAtom(csvRecord[i], col.type) }, columnInfo)
+        }
     }
 
-    private fun <T> readInner(limit: Int?, skipHeader: Boolean, mapper: (Int, List<String>) -> T, handle: (csvRow: T) -> Unit) {
-        var headerSkipped = skipHeader
-        val columnNames = columnInfo.map { it.fieldName }
-        CSVParser(BufferedReader(FileReader(csvPath.toFile())), csvFormat).use {
-            val linesIterator = it.iterator()
-
-            var rowNum = 0
-            while (linesIterator.hasNext()) {
-                if (!headerSkipped) {
-                    linesIterator.next()
-                    headerSkipped = true
-                }
-                val csvLine = linesIterator.next()
-                val columns = mutableListOf<String>()
-                for (header in columnNames) {
-                    val rowValue = csvLine.get(header)
-                    columns.add(rowValue)
-                }
-                handle(mapper(rowNum++, columns))
-                if (limit != null && limit == rowNum) {
-                    return@use
-                }
-            }
-        }
+    private fun readInner(skip: Int, limit: Int?): ClosableIterator<CSVRecord> {
+        val reader = readerFactory()
+        return ClosableIterator(CSVParser(reader, csvFormat)
+                .iterator()
+                .asSequence()
+                .drop(skip)
+                .apply { if (limit != null) this.take(limit) }
+                .iterator(), reader)
     }
 
     private fun getColumnInfoInner(): List<ColumnInfo> {
-        var row: List<String>? = null
-        this.readInner(1, true, { _, columns -> columns }, { row = it })
-        if (row == null) {
-            return emptyList()
-        }
-        val result = mutableListOf<ColumnInfo>()
-        row!!.forEach { columnName ->
-            val fieldType: FieldType = when {
-                columnName.contains('.') && columnName.toFloatOrNull() != null -> FieldType.FLOAT
-                columnName.toIntOrNull() != null -> FieldType.INTEGER
-                else -> FieldType.STRING
+        return this.readInner(0, 1).use { headerIterator ->
+            if (!headerIterator.hasNext()) {
+                return@use emptyList()
             }
-            result.add(ColumnInfo(fieldType, columnName))
-        }
-        return result
-    }
+            val headerRecord: CSVRecord = headerIterator.next()
+            val header: List<String> = (0 until headerRecord.size()).map { headerRecord.get(it) }
 
-    override fun close() {
+            val result = mutableListOf<ColumnInfo>()
+            this.readInner(1, 1).use use2@{ valueIterator ->
+                if (!valueIterator.hasNext()) {
+                    return@use2 header.map { ColumnInfo(FieldType.STRING, it) }
+                }
+                valueIterator.next().forEachIndexed { i, value ->
+                    val fieldType: FieldType = when {
+                        value.contains('.') && value.toFloatOrNull() != null -> FieldType.FLOAT
+                        value.toIntOrNull() != null -> FieldType.INTEGER
+                        else -> FieldType.STRING
+                    }
+                    result.add(ColumnInfo(fieldType, header[i]))
+                }
+                result
+            }
+        }
     }
 }
 

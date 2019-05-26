@@ -30,9 +30,7 @@ class ExecutorEngine {
             }
             is SelectStatement -> {
                 val planDescriptor = sqlPlanner.createPlan(parsedStatement.ctx, csvReadingFactory)
-                val result = planDescriptor.datasetReader.use {
-                    sqlExecutor.execute(planDescriptor)
-                }
+                val result = sqlExecutor.execute(planDescriptor)
                 TextResponse(result.toString())
             }
         }

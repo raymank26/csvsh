@@ -44,25 +44,27 @@ class ServiceStatementsExecutor {
 
         indexContent.use {
             indexContent.clear()
-
-            csvReader.read({ row ->
-                val fieldValue: Any = row.getCell(fieldName).asValue
-                indexContent.compute(fieldValue) { _: Any, positions: IntArray? ->
-                    if (positions == null) {
-                        IntArray(1).apply { this[0] = row.rowNum }
-                    } else {
-                        val newPositions = IntArray(positions.size + 1)
-                        System.arraycopy(positions, 0, newPositions, 0, positions.size)
-                        newPositions[positions.size + 1] = row.rowNum
-                        newPositions
+            csvReader.getIterator().use { iterator ->
+                iterator.forEach { row ->
+                    val fieldValue: Any = row.getCell(fieldName).asValue
+                    indexContent.compute(fieldValue) { _: Any, positions: IntArray? ->
+                        if (positions == null) {
+                            IntArray(1).apply { this[0] = row.rowNum }
+                        } else {
+                            val newPositions = IntArray(positions.size + 1)
+                            System.arraycopy(positions, 0, newPositions, 0, positions.size)
+                            newPositions[positions.size + 1] = row.rowNum
+                            newPositions
+                        }
                     }
+
                 }
-            }, null)
+            }
         }
     }
 
     fun createCsvDatasetReaderFactory(): DatasetReaderFactory {
-        return CsvDatasetReaderFactory { csvPath -> loadIndexes(csvPath) }
+        return CsvDatasetReaderFactory(indexesLoader = this::loadIndexes)
     }
 
     private fun loadIndexes(csvPath: Path): List<IndexDescriptionAndPath> {

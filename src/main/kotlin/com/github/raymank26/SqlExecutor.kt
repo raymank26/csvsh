@@ -70,20 +70,22 @@ class SqlExecutor {
 
     private fun evalOverCsv(sqlPlan: SqlPlan, atoms: List<ExpressionAtom>): Map<ExpressionAtom, Set<Int>> {
         val result = mutableMapOf<ExpressionAtom, MutableSet<Int>>()
-        sqlPlan.datasetReader.read({ row: DatasetRow ->
-            for (expression in atoms) {
-                if (isRowApplicable(row, expression)) {
-                    result.compute(expression) { _, bs ->
-                        return@compute if (bs == null) {
-                            mutableSetOf(row.rowNum)
-                        } else {
-                            bs.add(row.rowNum)
-                            bs
+        sqlPlan.datasetReader.getIterator().use { iterator ->
+            iterator.forEach { row: DatasetRow ->
+                for (expression in atoms) {
+                    if (isRowApplicable(row, expression)) {
+                        result.compute(expression) { _, bs ->
+                            return@compute if (bs == null) {
+                                mutableSetOf(row.rowNum)
+                            } else {
+                                bs.add(row.rowNum)
+                                bs
+                            }
                         }
                     }
                 }
             }
-        }, null)
+        }
         return result
     }
 
@@ -111,11 +113,13 @@ class SqlExecutor {
 
     private fun readDataset(sqlPlan: SqlPlan, rowIndexes: Set<Int>?): DatasetResult {
         val rows = mutableListOf<DatasetRow>()
-        sqlPlan.datasetReader.read({ csvRow: DatasetRow ->
-            if (rowIndexes == null || rowIndexes.contains(csvRow.rowNum)) {
-                rows.add(csvRow)
+        sqlPlan.datasetReader.getIterator().use { iterator ->
+            iterator.forEach { csvRow: DatasetRow ->
+                if (rowIndexes == null || rowIndexes.contains(csvRow.rowNum)) {
+                    rows.add(csvRow)
+                }
             }
-        }, null)
+        }
         return DatasetResult(rows, sqlPlan.datasetReader.columnInfo)
     }
 
