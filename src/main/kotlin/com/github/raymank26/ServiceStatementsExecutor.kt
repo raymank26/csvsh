@@ -1,6 +1,8 @@
 package com.github.raymank26
 
+import com.github.raymank26.file.FileSystem
 import com.github.raymank26.sql.SqlParser
+import com.google.common.collect.ImmutableMap
 import org.mapdb.BTreeMap
 import org.mapdb.DBMaker
 import org.mapdb.Serializer
@@ -9,10 +11,18 @@ import java.io.File
 import java.nio.file.Path
 import java.nio.file.Paths
 
+private val MAPDB_SERIALIZERS: Map<FieldType, GroupSerializer<*>> = ImmutableMap.of(
+        FieldType.INTEGER, Serializer.INTEGER,
+        FieldType.FLOAT, Serializer.FLOAT,
+        FieldType.STRING, Serializer.STRING
+)
+
 /**
  * Date: 2019-05-18.
  */
-class ServiceStatementsExecutor {
+class ServiceStatementsExecutor(private val datasetMetadataProvider: DatasetMetadataProvider,
+                                private val fileSystem: FileSystem,
+                                private val contentDataProvider: ContentDataProvider) {
 
     fun createIndex(ctx: SqlParser.CreateIndexContext, datasetReaderFactory: DatasetReaderFactory) {
         val csvPath = Paths.get(ctx.table().text)
@@ -25,18 +35,7 @@ class ServiceStatementsExecutor {
 
         val columnInfo: ColumnInfo = fields.find { it.fieldName == fieldName }!!
 
-        val keySerializer: Any
-        keySerializer = when (columnInfo.type) {
-            FieldType.INTEGER -> {
-                Serializer.INTEGER
-            }
-            FieldType.FLOAT -> {
-                Serializer.FLOAT
-            }
-            FieldType.STRING -> {
-                Serializer.STRING
-            }
-        }
+        val keySerializer: GroupSerializer<*> = MAPDB_SERIALIZERS[columnInfo.type] ?: throw IllegalStateException()
         @Suppress("UNCHECKED_CAST")
         val indexContent: BTreeMap<Any, IntArray> = DBMaker.fileDB(indexFile).make()
                 .treeMap("$indexName|$fieldName|${columnInfo.type.mark}", keySerializer as GroupSerializer<Any>, Serializer.INT_ARRAY)
@@ -46,7 +45,7 @@ class ServiceStatementsExecutor {
             indexContent.clear()
             csvReader.getIterator().use { iterator ->
                 iterator.forEach { row ->
-                    val fieldValue: Any = row.getCell(fieldName).asValue
+                    val fieldValue: Any = row.getCell(fieldName).asValue ?: return@forEach
                     indexContent.compute(fieldValue) { _: Any, positions: IntArray? ->
                         if (positions == null) {
                             IntArray(1).apply { this[0] = row.rowNum }
@@ -63,33 +62,8 @@ class ServiceStatementsExecutor {
         }
     }
 
-    fun createCsvDatasetReaderFactory(): DatasetReaderFactory {
-        return CsvDatasetReaderFactory(indexesLoader = this::loadIndexes)
-    }
-
-    private fun loadIndexes(csvPath: Path): List<IndexDescriptionAndPath> {
-        val indexFile = csvPathToIndexFile(csvPath)
-        if (!indexFile.exists()) {
-            return emptyList()
-        }
-        val db = DBMaker.fileDB(indexFile).readOnly().make()
-        val result = mutableListOf<IndexDescriptionAndPath>()
-        for (name in db.getAllNames()) {
-            val (indexName, fieldName, fieldTypeMark) = name.split("|")
-
-            val byteMark = fieldTypeMark.toByte()
-            val serializer = when (FieldType.MARK_TO_FIELD_TYPE[byteMark]) {
-                FieldType.INTEGER -> Serializer.INTEGER
-                FieldType.FLOAT -> Serializer.FLOAT
-                FieldType.STRING -> Serializer.STRING
-                else -> throw RuntimeException("Unable to get field type by mark = $byteMark")
-            }
-            val tm = db.treeMap(name, serializer, Serializer.INT_ARRAY).open()
-            @Suppress("UNCHECKED_CAST")
-            val readOnlyIndex = MapDBReadonlyIndex(tm as BTreeMap<in Any, IntArray>, FieldType.INTEGER)
-            result.add(IndexDescriptionAndPath(IndexDescription(indexName, fieldName), readOnlyIndex))
-        }
-        return result
+    fun createDatasetReaderFactory(): DatasetReaderFactory {
+        return FilesystemDatasetReaderFactory(datasetMetadataProvider, fileSystem, contentDataProvider)
     }
 
     private fun csvPathToIndexFile(csvPath: Path): File {

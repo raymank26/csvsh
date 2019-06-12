@@ -104,9 +104,11 @@ class SqlExecutor {
             Operator.EQ -> fieldValue eq (sqlValue as SqlValueAtom)
             Operator.IN -> (sqlValue as ListValue).value.any { it eq fieldValue }
             Operator.LIKE -> {
+                val stringContent = (sqlValue as StringValue).value
+                        ?: return false
                 // TODO: actually, SQL pattern matching is a great deal more complicated.
-                val regExValue = (sqlValue as StringValue).value.replace("%", ".*").replace('%', '?')
-                Pattern.compile(regExValue).toRegex().matches((fieldValue as StringValue).value)
+                val regExValue = stringContent.replace("%", ".*").replace('%', '?')
+                Pattern.compile(regExValue).toRegex().matches(stringContent)
             }
         }
     }

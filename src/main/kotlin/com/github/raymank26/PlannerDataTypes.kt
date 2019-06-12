@@ -18,7 +18,7 @@ enum class FieldType(val mark: Byte) {
     ;
 
     companion object {
-        val MARK_TO_FIELD_TYPE = values().associateBy { it.mark }
+        val MARK_TO_FIELD_TYPE: Map<Byte, FieldType> = values().associateBy { it.mark }
     }
 }
 
@@ -85,77 +85,108 @@ open class BaseExpressionVisitor<T> {
 
 interface SqlValueAtom : Comparable<SqlValueAtom> {
     val type: FieldType
-    val asValue: Any
+    val asValue: Any?
     fun toText(): String
 }
 
 private fun SqlValueAtom.asInt(): Int {
-    return asValue as? Int ?: throw RuntimeException("Value of type ${asValue.javaClass} is not Int")
+    val v = asValue
+    requireNotNull(v)
+    return v as? Int ?: throw RuntimeException("Value of type ${v.javaClass} is not Int")
 }
 
 private fun SqlValueAtom.asFloat(): Float {
-    return asValue as? Float ?: throw RuntimeException("Value of type ${asValue.javaClass} is not Float")
+    val v = asValue
+    requireNotNull(v)
+    return v as? Float ?: throw RuntimeException("Value of type ${v.javaClass} is not Float")
 }
 
 private fun SqlValueAtom.asString(): String {
-    return asValue as? String ?: throw RuntimeException("Value of type ${asValue.javaClass} is not String")
+    val v = asValue
+    requireNotNull(v)
+    return v as? String ?: throw RuntimeException("Value of type ${v.javaClass} is not String")
 }
 
 infix fun SqlValueAtom.eq(other: SqlValueAtom): Boolean = asValue == other.asValue
 
 infix fun SqlValueAtom.plus(other: SqlValueAtom): SqlValueAtom {
-    return when (type) {
-        FieldType.INTEGER -> IntValue(asInt() + other.asInt())
-        FieldType.FLOAT -> FloatValue(asFloat() + other.asFloat())
-        FieldType.STRING -> StringValue(asString() + other.asString())
+    return when {
+        asValue != null && other.asValue == null -> this
+        asValue == null -> other
+        type == FieldType.INTEGER -> IntValue(asInt() + other.asInt())
+        type == FieldType.FLOAT -> FloatValue(asFloat() + other.asFloat())
+        type == FieldType.STRING -> StringValue(asString() + other.asString())
+        else -> throw IllegalStateException("Case is not handled")
     }
 }
 
 infix fun SqlValueAtom.lt(other: SqlValueAtom): Boolean {
-    return when (type) {
-        FieldType.INTEGER -> asInt() < other.asInt()
-        FieldType.FLOAT -> asFloat() < other.asFloat()
-        FieldType.STRING -> asString() < other.asString()
+    return when {
+        asValue == null || other.asValue == null -> false
+        type == FieldType.INTEGER -> asInt() < other.asInt()
+        type == FieldType.FLOAT -> asFloat() < other.asFloat()
+        type == FieldType.STRING -> asString() < other.asString()
+        else -> throw IllegalStateException("Case is not handled")
     }
 }
 
 infix fun SqlValueAtom.lte(other: SqlValueAtom): Boolean {
-    return when (type) {
-        FieldType.INTEGER -> asInt() <= other.asFloat()
-        FieldType.FLOAT -> asFloat() <= other.asFloat()
-        FieldType.STRING -> asString() <= other.asString()
+    return when {
+        asValue == null || other.asValue == null -> false
+        type == FieldType.INTEGER -> asInt() <= other.asFloat()
+        type == FieldType.FLOAT -> asFloat() <= other.asFloat()
+        type == FieldType.STRING -> asString() <= other.asString()
+        else -> throw IllegalStateException("Case is not handled")
     }
 }
 
 infix fun SqlValueAtom.gt(other: SqlValueAtom): Boolean {
-    return when (type) {
-        FieldType.INTEGER -> asInt() > other.asInt()
-        FieldType.FLOAT -> asFloat() > other.asFloat()
-        FieldType.STRING -> asString() > other.asString()
+    return when {
+        asValue == null || other.asValue == null -> false
+        type == FieldType.INTEGER -> asInt() > other.asInt()
+        type == FieldType.FLOAT -> asFloat() > other.asFloat()
+        type == FieldType.STRING -> asString() > other.asString()
+        else -> throw IllegalStateException("Case is not handled")
     }
 }
 
 infix fun SqlValueAtom.gte(other: SqlValueAtom): Boolean {
-    return when (type) {
-        FieldType.INTEGER -> asInt() >= other.asInt()
-        FieldType.FLOAT -> asFloat() >= other.asFloat()
-        FieldType.STRING -> asString() >= other.asString()
+    return when {
+        asValue == null || other.asValue == null -> false
+        type == FieldType.INTEGER -> asInt() >= other.asInt()
+        type == FieldType.FLOAT -> asFloat() >= other.asFloat()
+        type == FieldType.STRING -> asString() >= other.asString()
+        else -> throw IllegalStateException("Case is not handled")
     }
 }
 
 fun SqlValueAtom.max(other: SqlValueAtom): SqlValueAtom {
-    return when (type) {
-        FieldType.INTEGER -> IntValue(Math.max(asInt(), other.asInt()))
-        FieldType.FLOAT -> FloatValue(Math.max(asFloat(), other.asFloat()))
-        FieldType.STRING -> throw NotImplementedError("Operation 'plus' is not implemented for string type")
+    return when {
+        asValue != null && other.asValue == null -> this
+        asValue == null -> other
+        type == FieldType.INTEGER -> IntValue(Math.max(asInt(), other.asInt()))
+        type == FieldType.FLOAT -> FloatValue(Math.max(asFloat(), other.asFloat()))
+        type == FieldType.STRING -> throw NotImplementedError("Operation 'plus' is not implemented for string type")
+        else -> throw IllegalStateException("Case is not handled")
     }
 }
 
 fun SqlValueAtom.min(other: SqlValueAtom): SqlValueAtom {
-    return when (type) {
-        FieldType.INTEGER -> IntValue(Math.min(asInt(), other.asInt()))
-        FieldType.FLOAT -> FloatValue(Math.min(asFloat(), other.asFloat()))
-        FieldType.STRING -> throw NotImplementedError("Operation 'plus' is not implemented for string type")
+    return when {
+        asValue != null && other.asValue == null -> this
+        asValue == null -> other
+        type == FieldType.INTEGER -> IntValue(Math.min(asInt(), other.asInt()))
+        type == FieldType.FLOAT -> FloatValue(Math.min(asFloat(), other.asFloat()))
+        type == FieldType.STRING -> throw NotImplementedError("Operation 'plus' is not implemented for string type")
+        else -> throw IllegalStateException("Case is not handled")
+    }
+}
+
+fun <T : Comparable<T>> compareNullable(first: SqlValueAtom, second: SqlValueAtom, toType: (SqlValueAtom) -> T): Int {
+    return when {
+        first.asValue == null -> -1
+        second.asValue == null -> 1
+        else -> toType(first).compareTo(toType(second))
     }
 }
 
@@ -163,12 +194,12 @@ sealed class SqlValue
 
 data class RefValue(val name: String) : SqlValue()
 
-data class IntValue(val value: Int) : SqlValue(), SqlValueAtom {
+data class IntValue(val value: Int?) : SqlValue(), SqlValueAtom {
     override val type: FieldType = FieldType.INTEGER
-    override val asValue: Any = value
+    override val asValue: Any? = value
 
     override fun compareTo(other: SqlValueAtom): Int {
-        return value.compareTo(other.asInt())
+        return compareNullable(this, other) { it.asInt() }
     }
 
     override fun toText(): String {
@@ -176,12 +207,12 @@ data class IntValue(val value: Int) : SqlValue(), SqlValueAtom {
     }
 }
 
-data class FloatValue(val value: Float) : SqlValue(), SqlValueAtom {
+data class FloatValue(val value: Float?) : SqlValue(), SqlValueAtom {
     override val type: FieldType = FieldType.FLOAT
-    override val asValue: Any = value
+    override val asValue: Any? = value
 
     override fun compareTo(other: SqlValueAtom): Int {
-        return value.compareTo(other.asFloat())
+        return compareNullable(this, other) { it.asFloat() }
     }
 
     override fun toText(): String {
@@ -189,16 +220,16 @@ data class FloatValue(val value: Float) : SqlValue(), SqlValueAtom {
     }
 }
 
-data class StringValue(val value: String) : SqlValue(), SqlValueAtom {
+data class StringValue(val value: String?) : SqlValue(), SqlValueAtom {
     override val type: FieldType = FieldType.STRING
-    override val asValue: Any = value
+    override val asValue: Any? = value
 
     override fun compareTo(other: SqlValueAtom): Int {
-        return value.compareTo(other.asString())
+        return compareNullable(this, other) { it.asString() }
     }
 
     override fun toText(): String {
-        return value
+        return value ?: "null"
     }
 }
 

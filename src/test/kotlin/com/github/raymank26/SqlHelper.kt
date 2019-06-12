@@ -52,7 +52,7 @@ private fun createIndex(rows: List<DatasetRow>, indexDescription: IndexDescripti
     }
     val index = TreeMap<Any, MutableList<Int>>()
     for (row in rows) {
-        val key = row.getCell(indexDescription.fieldName).asValue
+        val key = row.getCell(indexDescription.fieldName).asValue ?: continue
         index.compute(key) { _, prev ->
             if (prev == null) {
                 mutableListOf(row.rowNum)
