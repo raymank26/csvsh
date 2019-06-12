@@ -151,7 +151,7 @@ interface ContentDataProvider {
 
 class CsvContentDataProvider(private val csvFormat: CSVFormat) : ContentDataProvider {
     override fun header(reader: Reader): List<String> {
-        val firstRecord: CSVRecord = CSVParser(reader, csvFormat).first()
+        val firstRecord: CSVRecord = CSVParser(reader, csvFormat).firstOrNull() ?: return emptyList()
         val res = toList(firstRecord).filterNotNull()
         if (firstRecord.size() != res.size) {
             throw IllegalStateException("Header has nulls")
@@ -164,9 +164,18 @@ class CsvContentDataProvider(private val csvFormat: CSVFormat) : ContentDataProv
     }
 
     override fun get(reader: Reader): ClosableIterator<List<String?>> {
+        val headerRow = header(reader)
+        reader.reset()
         val iterator = CSVParser(reader, csvFormat).iterator()
+        if (!iterator.hasNext()) {
+            return ClosableIterator(emptyList<List<String?>>().iterator(), reader)
+        }
         iterator.next()
-        return ClosableIterator(iterator, reader).map { toList(it) }
+        return ClosableIterator(iterator, reader).map {
+            val row = toList(it)
+            check(row.size == headerRow.size)
+            row
+        }
     }
 }
 
