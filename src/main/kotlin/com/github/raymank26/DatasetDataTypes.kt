@@ -71,7 +71,7 @@ class ClosableIterator<T>(private val iterator: Iterator<T>, private val resourc
         resource?.close()
     }
 
-    fun toList(): List<T?> {
+    fun toList(): List<T> {
         return iterator.asSequence().toList()
     }
 

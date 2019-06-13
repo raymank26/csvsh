@@ -24,7 +24,7 @@ class CsvReaderTest {
     fun testDatasetReader() {
         val header = dataProvider.header(StringReader(testInput))
         assertEquals(listOf("a", "b", "c"), header)
-        val content = dataProvider.get(StringReader(testInput)).asSequence().toList()
+        val content = dataProvider.get(StringReader(testInput)).toList()
         assertEquals(3, content.size)
         assertEquals(null, content[0][0])
         assertEquals(null, content[1][1])
@@ -35,7 +35,7 @@ class CsvReaderTest {
         val input = ""
         val header = dataProvider.header(StringReader(input))
         assertEquals(emptyList(), header)
-        val content = dataProvider.get(StringReader(input)).asSequence().toList()
+        val content = dataProvider.get(StringReader(input)).toList()
         assertEquals(emptyList(), content)
     }
 
@@ -44,7 +44,7 @@ class CsvReaderTest {
         val input = "a,b,c"
         val header = dataProvider.header(StringReader(input))
         assertEquals(listOf("a", "b", "c"), header)
-        val content = dataProvider.get(StringReader(input)).asSequence().toList()
+        val content = dataProvider.get(StringReader(input)).toList()
         assertEquals(emptyList(), content)
     }
 
