@@ -3,6 +3,8 @@ plugins {
 
     application
 
+    distribution
+
     antlr
 }
 
@@ -20,6 +22,10 @@ dependencies {
     implementation("com.jakewharton.fliptables:fliptables:1.0.2")
 
     implementation("org.slf4j:slf4j-api:1.7.26")
+
+    implementation("org.jline:jline:3.11.0")
+
+    implementation("org.fusesource.jansi:jansi:1.18")
 
     testImplementation("org.jetbrains.kotlin:kotlin-test")
 

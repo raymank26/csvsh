@@ -39,7 +39,7 @@ class ExecutorEngine {
             is SelectStatement -> {
                 val planDescriptor = sqlPlanner.createPlan(parsedStatement.ctx, datasetReaderFactory)
                 val result = sqlExecutor.execute(planDescriptor)
-                TextResponse(result.toString())
+                DatasetResponse(result)
             }
         }
     }
@@ -48,6 +48,8 @@ class ExecutorEngine {
 sealed class ExecutorResponse
 
 data class TextResponse(val value: String) : ExecutorResponse()
+
+data class DatasetResponse(val value: DatasetResult) : ExecutorResponse()
 
 object VoidResponse : ExecutorResponse()
 

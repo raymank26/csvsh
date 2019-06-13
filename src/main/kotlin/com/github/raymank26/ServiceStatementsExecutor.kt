@@ -13,7 +13,7 @@ class ServiceStatementsExecutor(private val datasetMetadataProvider: DatasetMeta
                                 private val indexesManager: IndexesManager) {
 
     fun createIndex(ctx: SqlParser.CreateIndexContext, datasetReaderFactory: DatasetReaderFactory) {
-        val csvPath = Paths.get(ctx.table().text)
+        val csvPath = Paths.get(ctx.table().IDENTIFIER_Q().text.drop(1).dropLast(1))
         val indexName = ctx.indexName().text
         val fieldName = ctx.reference().text
         indexesManager.createIndex(csvPath, indexName, fieldName, datasetReaderFactory)

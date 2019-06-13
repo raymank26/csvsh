@@ -65,7 +65,7 @@ class IndexesManager(private val fileSystem: FileSystem) {
                         } else {
                             val newPositions = IntArray(positions.size + 1)
                             System.arraycopy(positions, 0, newPositions, 0, positions.size)
-                            newPositions[positions.size + 1] = row.rowNum
+                            newPositions[positions.size] = row.rowNum
                             newPositions
                         }
                     }

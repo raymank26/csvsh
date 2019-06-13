@@ -14,7 +14,7 @@ import java.nio.file.Path
  */
 class RealFileSystem : FileSystem {
     override fun getDB(path: Path): DB {
-        return DBMaker.fileDB(path.toFile()).readOnly().make()
+        return DBMaker.fileDB(path.toFile()).make()
     }
 
     override fun isFileExists(path: Path): Boolean {
