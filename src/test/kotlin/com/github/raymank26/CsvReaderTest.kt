@@ -2,6 +2,8 @@ package com.github.raymank26
 
 import org.apache.commons.csv.CSVFormat
 import org.junit.Test
+import org.mapdb.DBMaker
+import org.mapdb.Serializer
 import java.io.StringReader
 import java.nio.file.Paths
 import kotlin.test.assertEquals
@@ -99,5 +101,28 @@ class CsvReaderTest {
         metadataProvider.getOrCreate(dataPath)
 
         assertFalse(inMemory.outputMapping.containsKey(metaPath))
+    }
+
+    @Test
+    fun testIndexLoaded() {
+        val dataPath = Paths.get("/path/content.csv")
+        val indexPath = Paths.get("/path/content.index")
+        val memoryDb = DBMaker.memoryDB().make()
+        memoryDb.treeMap("bIndex|b|${FieldType.INTEGER.mark}", Serializer.INTEGER, Serializer.INT_ARRAY)
+                .createOrOpen()
+
+        memoryDb.treeMap("cIndex|c|${FieldType.FLOAT.mark}", Serializer.FLOAT, Serializer.INT_ARRAY)
+                .createOrOpen()
+
+        val inMemory = InMemoryFileSystem(mapOf(
+                Pair(dataPath, testInput)
+        ), mapOf(
+                Pair(indexPath, memoryDb)
+        ))
+        val metadataProvider = DatasetMetadataProvider(inMemory, dataProvider)
+
+        val metadata = metadataProvider.getOrCreate(dataPath)
+        assertEquals(listOf(IndexDescription("bIndex", "b"), IndexDescription("cIndex", "c")), metadata.indexes.map { it.description })
+        println(metadata)
     }
 }

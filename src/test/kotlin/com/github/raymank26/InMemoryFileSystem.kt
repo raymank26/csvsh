@@ -11,16 +11,18 @@ import java.nio.file.Path
 /**
  * Date: 2019-06-13.
  */
-class InMemoryFileSystem(private val contentMapping: Map<Path, String>) : FileSystem {
+class InMemoryFileSystem(private val contentMapping: Map<Path, String>, private val indexesMapping: Map<Path, DB>) : FileSystem {
 
     val outputMapping: MutableMap<Path, ByteArrayOutputStream> = mutableMapOf()
 
+    constructor(contentMapping: Map<Path, String>) : this(contentMapping, emptyMap())
+
     override fun isFileExists(path: Path): Boolean {
-        return contentMapping.containsKey(path)
+        return contentMapping.containsKey(path) || indexesMapping.containsKey(path)
     }
 
     override fun getDB(path: Path): DB {
-        throw NotImplementedError("Not implemented")
+        return requireNotNull(indexesMapping[path]) { "Index for path does not exist" }
     }
 
     override fun getInputStream(path: Path): InputStream {

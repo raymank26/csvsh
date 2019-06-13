@@ -10,7 +10,6 @@ import org.mapdb.BTreeMap
 import org.mapdb.Serializer
 import org.slf4j.LoggerFactory
 import java.io.Reader
-import java.nio.file.Files
 import java.nio.file.Path
 import java.util.Properties
 
@@ -30,14 +29,17 @@ class DatasetMetadataProvider(private val fileSystem: FileSystem, private val da
         return createAndSaveMetadata(metadataPath, dataPath)
     }
 
-    private fun getMetadataPath(dataPath: Path): Path {
-        val filename = dataPath.fileName.toString()
-        val metaFilename = (if (filename.contains('.')) {
+    private fun getFilenameWithoutExtension(path: Path): String {
+        val filename = path.fileName.toString()
+        return if (filename.contains('.')) {
             filename.substring(0, filename.indexOf('.'))
         } else {
             filename
-        }) + ".meta"
-        return dataPath.parent.resolve(metaFilename)
+        }
+    }
+
+    private fun getMetadataPath(dataPath: Path): Path {
+        return dataPath.parent.resolve(getFilenameWithoutExtension(dataPath) + ".meta")
     }
 
     private fun readMetadataContent(metadataPath: Path, dataPath: Path): DatasetMetadata? {
@@ -89,7 +91,7 @@ class DatasetMetadataProvider(private val fileSystem: FileSystem, private val da
                     .toList()
             val columns: String = columnInfos.joinToString(separator = ";") { value ->
                 "${value.type.mark},${value.fieldName}"
-                    }
+            }
 
             prop.setProperty("columns", columns)
             fileSystem.getOutputStream(metadataPath).use {
@@ -119,8 +121,8 @@ class DatasetMetadataProvider(private val fileSystem: FileSystem, private val da
     }
 
     private fun loadIndexes(csvPath: Path): List<IndexDescriptionAndPath> {
-        val indexFile: Path = csvPathToIndexFile(csvPath)
-        if (!Files.exists(indexFile)) {
+        val indexFile: Path = getIndexPath(csvPath)
+        if (!fileSystem.isFileExists(indexFile)) {
             return emptyList()
         }
         val db = fileSystem.getDB(indexFile)
@@ -143,8 +145,8 @@ class DatasetMetadataProvider(private val fileSystem: FileSystem, private val da
         return result
     }
 
-    private fun csvPathToIndexFile(csvPath: Path): Path {
-        return csvPath.parent.resolve("indexContent")
+    private fun getIndexPath(dataPath: Path): Path {
+        return dataPath.parent.resolve(getFilenameWithoutExtension(dataPath) + ".index")
     }
 }
 
