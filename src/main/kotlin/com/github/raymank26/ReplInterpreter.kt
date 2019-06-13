@@ -61,8 +61,6 @@ fun prettifyDataset(dataset: DatasetResult): String {
     if (rows.count() > rowsLimit) {
         overflow = true
         rows = rows.take(rowsLimit)
-    } else {
-        rows
     }
 
     return FlipTable.of(header, rows.toList().toTypedArray()) +
