@@ -2,8 +2,6 @@ package com.github.raymank26
 
 import com.github.raymank26.file.FileSystem
 import com.github.raymank26.sql.SqlParser
-import java.io.File
-import java.nio.file.Path
 import java.nio.file.Paths
 
 /**
@@ -23,10 +21,6 @@ class ServiceStatementsExecutor(private val datasetMetadataProvider: DatasetMeta
 
     fun createDatasetReaderFactory(): DatasetReaderFactory {
         return FilesystemDatasetReaderFactory(datasetMetadataProvider, fileSystem, contentDataProvider)
-    }
-
-    private fun csvPathToIndexFile(csvPath: Path): File {
-        return csvPath.parent.resolve("indexContent").toFile()
     }
 
     fun describeTable(ctx: SqlParser.DescribeContext, readerFactory: DatasetReaderFactory): List<ColumnInfo> {

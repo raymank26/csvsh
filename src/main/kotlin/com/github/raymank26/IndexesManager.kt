@@ -24,19 +24,20 @@ class IndexesManager(private val fileSystem: FileSystem) {
         if (!fileSystem.isFileExists(indexFile)) {
             return emptyList()
         }
-        val db = fileSystem.getDB(indexFile)
-        val result = mutableListOf<IndexDescriptionAndPath>()
-        for (name in db.getAllNames()) {
-            val (indexName, fieldName, fieldTypeMark) = name.split("|")
+        return fileSystem.getDB(indexFile).use { db ->
+            val result = mutableListOf<IndexDescriptionAndPath>()
+            for (name in db.getAllNames()) {
+                val (indexName, fieldName, fieldTypeMark) = name.split("|")
 
-            val byteMark = fieldTypeMark.toByte()
-            val serializer = requireNotNull(MAPDB_SERIALIZERS[FieldType.MARK_TO_FIELD_TYPE[byteMark]])
-            val tm = db.treeMap(name, serializer, Serializer.INT_ARRAY).open()
-            @Suppress("UNCHECKED_CAST")
-            val readOnlyIndex = MapDBReadonlyIndex(tm as BTreeMap<in Any, IntArray>, FieldType.INTEGER)
-            result.add(IndexDescriptionAndPath(IndexDescription(indexName, fieldName), readOnlyIndex))
+                val byteMark = fieldTypeMark.toByte()
+                val serializer = requireNotNull(MAPDB_SERIALIZERS[FieldType.MARK_TO_FIELD_TYPE[byteMark]])
+                val tm = db.treeMap(name, serializer, Serializer.INT_ARRAY).open()
+                @Suppress("UNCHECKED_CAST")
+                val readOnlyIndex = MapDBReadonlyIndex(tm as BTreeMap<in Any, IntArray>, FieldType.INTEGER)
+                result.add(IndexDescriptionAndPath(IndexDescription(indexName, fieldName), readOnlyIndex))
+            }
+            result
         }
-        return result
     }
 
     fun createIndex(dataPath: Path, indexName: String, fieldName: String, datasetReaderFactory: DatasetReaderFactory) {

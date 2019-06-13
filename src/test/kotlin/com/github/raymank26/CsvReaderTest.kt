@@ -1,13 +1,16 @@
 package com.github.raymank26
 
 import org.apache.commons.csv.CSVFormat
+import org.junit.After
+import org.junit.Before
 import org.junit.Test
-import org.mapdb.DBMaker
-import org.mapdb.Serializer
 import java.io.StringReader
+import java.nio.file.Files
 import java.nio.file.Paths
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+
+private val FILE_DB_PATH = Paths.get("/tmp/csv_test")
 
 /**
  * Date: 2019-05-26.
@@ -111,23 +114,31 @@ class CsvReaderTest {
     fun testIndexLoaded() {
         val dataPath = Paths.get("/path/content.csv")
         val indexPath = Paths.get("/path/content.index")
-        val memoryDb = DBMaker.memoryDB().make()
-        memoryDb.treeMap("bIndex|b|${FieldType.INTEGER.mark}", Serializer.INTEGER, Serializer.INT_ARRAY)
-                .createOrOpen()
-
-        memoryDb.treeMap("cIndex|c|${FieldType.FLOAT.mark}", Serializer.FLOAT, Serializer.INT_ARRAY)
-                .createOrOpen()
 
         val inMemoryFS = InMemoryFileSystem(mapOf(
                 Pair(dataPath, testInput)
         ), mapOf(
-                Pair(indexPath, memoryDb)
+                Pair(indexPath, FILE_DB_PATH)
         ))
         val indexesManager = IndexesManager(inMemoryFS)
         val metadataProvider = DatasetMetadataProvider(inMemoryFS, dataProvider, indexesManager)
+        val readerFactory = FilesystemDatasetReaderFactory(metadataProvider, inMemoryFS, dataProvider)
+        indexesManager.createIndex(dataPath, "aIndex", "a", readerFactory)
+        indexesManager.createIndex(dataPath, "bIndex", "b", readerFactory)
+        indexesManager.createIndex(dataPath, "cIndex", "c", readerFactory)
 
         val metadata = metadataProvider.getOrCreate(dataPath)
-        assertEquals(listOf(IndexDescription("bIndex", "b"), IndexDescription("cIndex", "c")), metadata.indexes.map { it.description })
+        assertEquals(
+                listOf(IndexDescription("aIndex", "a"), IndexDescription("bIndex", "b"), IndexDescription("cIndex", "c")),
+                metadata.indexes.map { it.description })
         println(metadata)
+    }
+
+    @Before
+    @After
+    fun cleanupFileDb() {
+        if (Files.exists(FILE_DB_PATH)) {
+            Files.delete(FILE_DB_PATH)
+        }
     }
 }

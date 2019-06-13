@@ -19,9 +19,12 @@ private val columnInfos = listOf(
 )
 val datasetRows = createDataset(listOf(
         listOf("foobar", "1", "3.0"),
-        listOf("baz", "10", "3.4"),
-        listOf("baz", "11", "7"),
-        listOf("bazz", "2", "-1")
+        listOf("bazz", null, "-1.0"),
+        listOf(null, "10", "3.4"),
+        listOf(null, "-5", "8.2"),
+        listOf("baz", "11", null),
+        listOf("bazz", "2", "-1"),
+        listOf("foobarbaz", "2", "-1")
 ), columnInfos)
 
 private val availableIndexes = listOf(
@@ -37,7 +40,7 @@ private val datasetReader = InMemoryDatasetReader(
 
 private val datasetFactory = InMemoryDatasetFactory(datasetReader)
 
-fun createDataset(listOf: List<List<String>>, columnInfo: List<ColumnInfo>): List<DatasetRow> {
+fun createDataset(listOf: List<List<String?>>, columnInfo: List<ColumnInfo>): List<DatasetRow> {
     return listOf.mapIndexed { rowNum, columns ->
         val sqlColumns = columns.mapIndexed { i, column ->
             createSqlAtom(column, columnInfo[i].type)

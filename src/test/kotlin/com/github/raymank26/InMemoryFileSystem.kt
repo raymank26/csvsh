@@ -2,6 +2,7 @@ package com.github.raymank26
 
 import com.github.raymank26.file.FileSystem
 import org.mapdb.DB
+import org.mapdb.DBMaker
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import java.io.InputStream
@@ -11,7 +12,7 @@ import java.nio.file.Path
 /**
  * Date: 2019-06-13.
  */
-class InMemoryFileSystem(private val contentMapping: Map<Path, String>, private val indexesMapping: Map<Path, DB>) : FileSystem {
+class InMemoryFileSystem(private val contentMapping: Map<Path, String>, private val indexesMapping: Map<Path, Path>) : FileSystem {
 
     val outputMapping: MutableMap<Path, ByteArrayOutputStream> = mutableMapOf()
 
@@ -22,7 +23,7 @@ class InMemoryFileSystem(private val contentMapping: Map<Path, String>, private 
     }
 
     override fun getDB(path: Path): DB {
-        return requireNotNull(indexesMapping[path]) { "Index for path does not exist" }
+        return requireNotNull(indexesMapping[path]?.let { DBMaker.fileDB(it.toFile()).make() }) { "Index for path does not exist" }
     }
 
     override fun getInputStream(path: Path): InputStream {
