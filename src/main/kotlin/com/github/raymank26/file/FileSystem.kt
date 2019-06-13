@@ -31,7 +31,7 @@ interface FileSystem {
     fun getOutputStream(path: Path): OutputStream
 
     fun getMd5(path: Path): Md5Hash {
-        val hashing = Hashing.goodFastHash(256)
+        val hashing = Hashing.md5()
                 .newHasher()
         return getInputStream(path).use {
             ByteStreams.copy(it, Funnels.asOutputStream(hashing))

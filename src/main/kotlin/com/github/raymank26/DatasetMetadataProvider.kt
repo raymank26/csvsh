@@ -47,7 +47,7 @@ class DatasetMetadataProvider(private val fileSystem: FileSystem, private val da
         return try {
             val prop = Properties()
             prop.load(fileSystem.getInputStream(metadataPath))
-            val md5: ByteArray = BaseEncoding.base16().decode(prop.getProperty("md5"))
+            val md5: ByteArray = BaseEncoding.base16().lowerCase().decode(prop.getProperty("md5"))
             val columns: List<ColumnInfo> = prop.getProperty("columns")
                     .split(";")
                     .map { pair ->

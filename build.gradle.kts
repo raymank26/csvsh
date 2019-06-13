@@ -25,6 +25,8 @@ dependencies {
 
     testImplementation("org.jetbrains.kotlin:kotlin-test-junit")
 
+    testImplementation("io.mockk:mockk:1.9.3")
+
     antlr("org.antlr:antlr4:4.7.2")
 }
 

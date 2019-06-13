@@ -5,6 +5,7 @@ import org.junit.Test
 import java.io.StringReader
 import java.nio.file.Paths
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 
 /**
  * Date: 2019-05-26.
@@ -79,5 +80,24 @@ class CsvReaderTest {
         val metadata = metadataProvider.getOrCreate(dataPath)
         assertEquals(listOf(ColumnInfo(FieldType.STRING, "a"), ColumnInfo(FieldType.STRING, "b"), ColumnInfo(FieldType.STRING, "c")),
                 metadata.columnInfos)
+    }
+
+    @Test
+    fun testMetadataUsed() {
+        val dataPath = Paths.get("/path/content.csv")
+        val metaPath = Paths.get("/path/content.meta")
+        val inMemory = InMemoryFileSystem(mutableMapOf(
+                Pair(dataPath, testInput),
+                Pair(metaPath, """
+                    columns=3,a;1,b;2,c
+                    md5=d53b4a5133cd8a0d86151986735a3feb
+                """.trimIndent())
+        ))
+
+        val metadataProvider = DatasetMetadataProvider(inMemory, dataProvider)
+
+        metadataProvider.getOrCreate(dataPath)
+
+        assertFalse(inMemory.outputMapping.containsKey(metaPath))
     }
 }
