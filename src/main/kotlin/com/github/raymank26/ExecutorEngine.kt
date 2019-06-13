@@ -14,7 +14,9 @@ class ExecutorEngine {
     private val sqlExecutor: SqlExecutor = SqlExecutor()
     private val fileSystem: FileSystem = RealFileSystem()
     private val contentDataProvider: ContentDataProvider = CsvContentDataProvider(CSVFormat.RFC4180.withNullString("null"))
-    private val ssExecutor = ServiceStatementsExecutor(DatasetMetadataProvider(fileSystem, contentDataProvider), fileSystem, contentDataProvider)
+    private val indexesManager = IndexesManager(fileSystem)
+    private val ssExecutor = ServiceStatementsExecutor(DatasetMetadataProvider(fileSystem, contentDataProvider, indexesManager),
+            fileSystem, contentDataProvider, indexesManager)
 
     fun execute(inputLine: String): ExecutorResponse {
         val parsedStatement: StatementType

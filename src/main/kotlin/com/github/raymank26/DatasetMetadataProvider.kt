@@ -2,12 +2,11 @@ package com.github.raymank26
 
 import com.github.raymank26.file.FileSystem
 import com.github.raymank26.file.Md5Hash
+import com.github.raymank26.file.getFilenameWithoutExtension
 import com.google.common.io.BaseEncoding
 import org.apache.commons.csv.CSVFormat
 import org.apache.commons.csv.CSVParser
 import org.apache.commons.csv.CSVRecord
-import org.mapdb.BTreeMap
-import org.mapdb.Serializer
 import org.slf4j.LoggerFactory
 import java.io.Reader
 import java.nio.file.Path
@@ -18,7 +17,9 @@ private val LOG = LoggerFactory.getLogger(DatasetMetadataProvider::class.java)
 /**
  * Date: 2019-06-09.
  */
-class DatasetMetadataProvider(private val fileSystem: FileSystem, private val dataReaderProvider: ContentDataProvider) {
+class DatasetMetadataProvider(private val fileSystem: FileSystem,
+                              private val dataReaderProvider: ContentDataProvider,
+                              private val indexManager: IndexesManager) {
 
     fun getOrCreate(dataPath: Path): DatasetMetadata {
         val metadataPath = getMetadataPath(dataPath)
@@ -29,14 +30,6 @@ class DatasetMetadataProvider(private val fileSystem: FileSystem, private val da
         return createAndSaveMetadata(metadataPath, dataPath)
     }
 
-    private fun getFilenameWithoutExtension(path: Path): String {
-        val filename = path.fileName.toString()
-        return if (filename.contains('.')) {
-            filename.substring(0, filename.indexOf('.'))
-        } else {
-            filename
-        }
-    }
 
     private fun getMetadataPath(dataPath: Path): Path {
         return dataPath.parent.resolve(getFilenameWithoutExtension(dataPath) + ".meta")
@@ -56,7 +49,7 @@ class DatasetMetadataProvider(private val fileSystem: FileSystem, private val da
                         val (type, name) = pair.split(",")
                         ColumnInfo(FieldType.MARK_TO_FIELD_TYPE.getValue(type.toByte()), name)
                     }
-            DatasetMetadata(columns, loadIndexes(dataPath), Md5Hash(md5))
+            DatasetMetadata(columns, indexManager.loadIndexes(dataPath), Md5Hash(md5))
         } catch (e: Exception) {
             LOG.warn("Unable to read metadata for path = $metadataPath", e)
             null
@@ -97,7 +90,7 @@ class DatasetMetadataProvider(private val fileSystem: FileSystem, private val da
             fileSystem.getOutputStream(metadataPath).use {
                 prop.store(it, null)
             }
-            DatasetMetadata(columnInfos, loadIndexes(dataPath), md5)
+            DatasetMetadata(columnInfos, indexManager.loadIndexes(dataPath), md5)
         }
     }
 
@@ -120,30 +113,6 @@ class DatasetMetadataProvider(private val fileSystem: FileSystem, private val da
         }
     }
 
-    private fun loadIndexes(csvPath: Path): List<IndexDescriptionAndPath> {
-        val indexFile: Path = getIndexPath(csvPath)
-        if (!fileSystem.isFileExists(indexFile)) {
-            return emptyList()
-        }
-        val db = fileSystem.getDB(indexFile)
-        val result = mutableListOf<IndexDescriptionAndPath>()
-        for (name in db.getAllNames()) {
-            val (indexName, fieldName, fieldTypeMark) = name.split("|")
-
-            val byteMark = fieldTypeMark.toByte()
-            val serializer = when (FieldType.MARK_TO_FIELD_TYPE[byteMark]) {
-                FieldType.INTEGER -> Serializer.INTEGER
-                FieldType.FLOAT -> Serializer.FLOAT
-                FieldType.STRING -> Serializer.STRING
-                else -> throw RuntimeException("Unable to get field type by mark = $byteMark")
-            }
-            val tm = db.treeMap(name, serializer, Serializer.INT_ARRAY).open()
-            @Suppress("UNCHECKED_CAST")
-            val readOnlyIndex = MapDBReadonlyIndex(tm as BTreeMap<in Any, IntArray>, FieldType.INTEGER)
-            result.add(IndexDescriptionAndPath(IndexDescription(indexName, fieldName), readOnlyIndex))
-        }
-        return result
-    }
 
     private fun getIndexPath(dataPath: Path): Path {
         return dataPath.parent.resolve(getFilenameWithoutExtension(dataPath) + ".index")

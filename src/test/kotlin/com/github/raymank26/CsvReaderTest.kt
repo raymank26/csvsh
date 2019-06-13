@@ -64,7 +64,8 @@ class CsvReaderTest {
     fun testFieldInferring() {
         val dataPath = Paths.get("/path/content.csv")
         val fileSystem = InMemoryFileSystem(mapOf(Pair(dataPath, testInput)))
-        val metadataProvider = DatasetMetadataProvider(fileSystem, dataProvider)
+        val indexesManager = IndexesManager(fileSystem)
+        val metadataProvider = DatasetMetadataProvider(fileSystem, dataProvider, indexesManager)
         val metadata = metadataProvider.getOrCreate(dataPath)
         println(fileSystem.outputMapping[Paths.get("/path/content.meta")])
         assertEquals(listOf(ColumnInfo(FieldType.STRING, "a"), ColumnInfo(FieldType.INTEGER, "b"), ColumnInfo(FieldType.FLOAT, "c")),
@@ -78,7 +79,8 @@ class CsvReaderTest {
             a,b,c
             null,null,null
         """.trimIndent())))
-        val metadataProvider = DatasetMetadataProvider(fileSystem, dataProvider)
+        val indexesManager = IndexesManager(fileSystem)
+        val metadataProvider = DatasetMetadataProvider(fileSystem, dataProvider, indexesManager)
         val metadata = metadataProvider.getOrCreate(dataPath)
         assertEquals(listOf(ColumnInfo(FieldType.STRING, "a"), ColumnInfo(FieldType.STRING, "b"), ColumnInfo(FieldType.STRING, "c")),
                 metadata.columnInfos)
@@ -88,7 +90,7 @@ class CsvReaderTest {
     fun testMetadataUsed() {
         val dataPath = Paths.get("/path/content.csv")
         val metaPath = Paths.get("/path/content.meta")
-        val inMemory = InMemoryFileSystem(mutableMapOf(
+        val inMemoryFS = InMemoryFileSystem(mutableMapOf(
                 Pair(dataPath, testInput),
                 Pair(metaPath, """
                     columns=3,a;1,b;2,c
@@ -96,11 +98,13 @@ class CsvReaderTest {
                 """.trimIndent())
         ))
 
-        val metadataProvider = DatasetMetadataProvider(inMemory, dataProvider)
+        val indexesManager = IndexesManager(inMemoryFS)
+
+        val metadataProvider = DatasetMetadataProvider(inMemoryFS, dataProvider, indexesManager)
 
         metadataProvider.getOrCreate(dataPath)
 
-        assertFalse(inMemory.outputMapping.containsKey(metaPath))
+        assertFalse(inMemoryFS.outputMapping.containsKey(metaPath))
     }
 
     @Test
@@ -114,12 +118,13 @@ class CsvReaderTest {
         memoryDb.treeMap("cIndex|c|${FieldType.FLOAT.mark}", Serializer.FLOAT, Serializer.INT_ARRAY)
                 .createOrOpen()
 
-        val inMemory = InMemoryFileSystem(mapOf(
+        val inMemoryFS = InMemoryFileSystem(mapOf(
                 Pair(dataPath, testInput)
         ), mapOf(
                 Pair(indexPath, memoryDb)
         ))
-        val metadataProvider = DatasetMetadataProvider(inMemory, dataProvider)
+        val indexesManager = IndexesManager(inMemoryFS)
+        val metadataProvider = DatasetMetadataProvider(inMemoryFS, dataProvider, indexesManager)
 
         val metadata = metadataProvider.getOrCreate(dataPath)
         assertEquals(listOf(IndexDescription("bIndex", "b"), IndexDescription("cIndex", "c")), metadata.indexes.map { it.description })

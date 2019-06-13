@@ -55,3 +55,12 @@ data class Md5Hash(val content: ByteArray) {
         return content.contentHashCode()
     }
 }
+
+fun getFilenameWithoutExtension(path: Path): String {
+    val filename = path.fileName.toString()
+    return if (filename.contains('.')) {
+        filename.substring(0, filename.indexOf('.'))
+    } else {
+        filename
+    }
+}
