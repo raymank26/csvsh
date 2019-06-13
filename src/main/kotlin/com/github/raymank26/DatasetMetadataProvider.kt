@@ -66,10 +66,15 @@ class DatasetMetadataProvider(private val fileSystem: FileSystem, private val da
         return fileSystem.getReader(dataPath).use { handle ->
             val currentResult: MutableList<FieldType?> = headers.map { null }.toMutableList()
             dataReaderProvider.get(handle).use {
-                it.map { columns ->
+                it.iterator().forEach { columns ->
                     columns.withIndex().forEach { value ->
                         currentResult[value.index] = nextFieldType(currentResult[value.index], value.value)
                     }
+                }
+            }
+            for ((i, value) in currentResult.withIndex()) {
+                if (value == null) {
+                    currentResult[i] = FieldType.STRING
                 }
             }
             val prop = Properties()
@@ -95,7 +100,7 @@ class DatasetMetadataProvider(private val fileSystem: FileSystem, private val da
         }
     }
 
-    private fun nextFieldType(prevType: FieldType?, nextValue: String?): FieldType {
+    private fun nextFieldType(prevType: FieldType?, nextValue: String?): FieldType? {
         val nextType = guessColumnInfo(nextValue)
         return when {
             prevType == null -> nextType
@@ -105,9 +110,9 @@ class DatasetMetadataProvider(private val fileSystem: FileSystem, private val da
         }
     }
 
-    private fun guessColumnInfo(value: String?): FieldType {
+    private fun guessColumnInfo(value: String?): FieldType? {
         return when {
-            value == null -> FieldType.STRING
+            value == null -> null
             value.contains('.') && value.toFloatOrNull() != null -> FieldType.FLOAT
             value.toIntOrNull() != null -> FieldType.INTEGER
             else -> FieldType.STRING
@@ -164,17 +169,13 @@ class CsvContentDataProvider(private val csvFormat: CSVFormat) : ContentDataProv
     }
 
     override fun get(reader: Reader): ClosableIterator<List<String?>> {
-        val headerRow = header(reader)
-        reader.reset()
         val iterator = CSVParser(reader, csvFormat).iterator()
         if (!iterator.hasNext()) {
             return ClosableIterator(emptyList<List<String?>>().iterator(), reader)
         }
         iterator.next()
         return ClosableIterator(iterator, reader).map {
-            val row = toList(it)
-            check(row.size == headerRow.size)
-            row
+            toList(it)
         }
     }
 }

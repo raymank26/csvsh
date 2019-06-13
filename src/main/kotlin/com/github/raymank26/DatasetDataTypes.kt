@@ -1,8 +1,8 @@
 package com.github.raymank26
 
 import com.github.raymank26.file.FileSystem
+import com.google.common.collect.Iterators
 import java.nio.file.Path
-import java.util.Collections
 
 /**
  * Date: 2019-05-17.
@@ -71,11 +71,12 @@ class ClosableIterator<T>(private val iterator: Iterator<T>, private val resourc
         resource?.close()
     }
 
+    fun toList(): List<T?> {
+        return iterator.asSequence().toList()
+    }
+
     fun <T2> map(f: (T) -> T2): ClosableIterator<T2> {
-        if (!hasNext()) {
-            return ClosableIterator(Collections.emptyIterator<T2>(), resource)
-        }
-        return ClosableIterator(iterator.asSequence().map { v -> f(v) }.iterator(), resource)
+        return ClosableIterator(Iterators.transform(iterator) { a -> a?.let { f(a) } }, resource)
     }
 }
 
