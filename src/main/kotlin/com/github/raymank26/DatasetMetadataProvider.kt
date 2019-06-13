@@ -2,6 +2,7 @@ package com.github.raymank26
 
 import com.github.raymank26.file.FileSystem
 import com.github.raymank26.file.Md5Hash
+import com.google.common.io.BaseEncoding
 import org.apache.commons.csv.CSVFormat
 import org.apache.commons.csv.CSVParser
 import org.apache.commons.csv.CSVRecord
@@ -46,14 +47,14 @@ class DatasetMetadataProvider(private val fileSystem: FileSystem, private val da
         return try {
             val prop = Properties()
             prop.load(fileSystem.getInputStream(metadataPath))
-            val md5 = prop.getProperty("md5")
+            val md5: ByteArray = BaseEncoding.base16().decode(prop.getProperty("md5"))
             val columns: List<ColumnInfo> = prop.getProperty("columns")
                     .split(";")
                     .map { pair ->
-                        val (name, type) = pair.split(",")
+                        val (type, name) = pair.split(",")
                         ColumnInfo(FieldType.MARK_TO_FIELD_TYPE.getValue(type.toByte()), name)
                     }
-            DatasetMetadata(columns, loadIndexes(dataPath), Md5Hash(md5.toByteArray()))
+            DatasetMetadata(columns, loadIndexes(dataPath), Md5Hash(md5))
         } catch (e: Exception) {
             LOG.warn("Unable to read metadata for path = $metadataPath", e)
             null
@@ -79,17 +80,15 @@ class DatasetMetadataProvider(private val fileSystem: FileSystem, private val da
             }
             val prop = Properties()
             val md5 = fileSystem.getMd5(dataPath)
-            prop.setProperty("md5", md5.content.toString())
+            prop.setProperty("md5", BaseEncoding.base16().lowerCase().encode(md5.content))
             val columnInfos = headers.asSequence()
                     .withIndex().map { (index, value) ->
                         val type = currentResult[index] ?: FieldType.STRING
                         ColumnInfo(type, value)
                     }
                     .toList()
-            val columns: String = columnInfos
-                    .withIndex().joinToString(separator = ";") { (index, value) ->
-                        val type = currentResult[index] ?: FieldType.STRING
-                        "${type.mark},$value"
+            val columns: String = columnInfos.joinToString(separator = ";") { value ->
+                "${value.type.mark},${value.fieldName}"
                     }
 
             prop.setProperty("columns", columns)
