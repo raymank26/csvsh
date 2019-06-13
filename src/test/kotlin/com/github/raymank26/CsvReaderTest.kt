@@ -5,7 +5,6 @@ import org.junit.Test
 import java.io.StringReader
 import java.nio.file.Paths
 import kotlin.test.assertEquals
-import kotlin.test.assertNotNull
 
 /**
  * Date: 2019-05-26.
@@ -63,9 +62,19 @@ class CsvReaderTest {
         val dataPath = Paths.get("/path/content.csv")
         val fileSystem = InMemoryFileSystem(mapOf(Pair(dataPath, testInput)))
         val metadataProvider = DatasetMetadataProvider(fileSystem, dataProvider)
-        val data = metadataProvider.getOrCreate(dataPath)
-        val metadata = fileSystem.outputMapping[Paths.get("/path/content.meta")]?.toString()
-        assertNotNull(metadata)
-        assertEquals(listOf(ColumnInfo(FieldType.STRING, "a"), ColumnInfo(FieldType.INTEGER, "b"), ColumnInfo(FieldType.FLOAT, "c")), data.columnInfos)
+        val metadata = metadataProvider.getOrCreate(dataPath)
+        assertEquals(listOf(ColumnInfo(FieldType.STRING, "a"), ColumnInfo(FieldType.INTEGER, "b"), ColumnInfo(FieldType.FLOAT, "c")), metadata.columnInfos)
+    }
+
+    @Test
+    fun testFieldInferringAllNull() {
+        val dataPath = Paths.get("/path/content.csv")
+        val fileSystem = InMemoryFileSystem(mapOf(Pair(dataPath, """
+            a,b,c
+            null,null,null
+        """.trimIndent())))
+        val metadataProvider = DatasetMetadataProvider(fileSystem, dataProvider)
+        val metadata = metadataProvider.getOrCreate(dataPath)
+        assertEquals(listOf(ColumnInfo(FieldType.STRING, "a"), ColumnInfo(FieldType.STRING, "b"), ColumnInfo(FieldType.STRING, "c")), metadata.columnInfos)
     }
 }
