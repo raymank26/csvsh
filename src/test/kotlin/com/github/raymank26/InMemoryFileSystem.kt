@@ -13,7 +13,7 @@ import java.nio.file.Path
  */
 class InMemoryFileSystem(private val contentMapping: Map<Path, String>) : FileSystem {
 
-    val outputMapping: MutableMap<Path, OutputStream> = mutableMapOf()
+    val outputMapping: MutableMap<Path, ByteArrayOutputStream> = mutableMapOf()
 
     override fun isFileExists(path: Path): Boolean {
         return contentMapping.containsKey(path)
@@ -29,10 +29,7 @@ class InMemoryFileSystem(private val contentMapping: Map<Path, String>) : FileSy
 
     override fun getOutputStream(path: Path): OutputStream {
         return outputMapping.compute(path) { _, prev ->
-            if (prev != null) {
-                return@compute prev
-            }
-            return@compute ByteArrayOutputStream()
+            prev ?: ByteArrayOutputStream()
         }!!
     }
 }

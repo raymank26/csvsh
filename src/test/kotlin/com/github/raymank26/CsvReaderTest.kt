@@ -63,7 +63,8 @@ class CsvReaderTest {
         val fileSystem = InMemoryFileSystem(mapOf(Pair(dataPath, testInput)))
         val metadataProvider = DatasetMetadataProvider(fileSystem, dataProvider)
         val metadata = metadataProvider.getOrCreate(dataPath)
-        assertEquals(listOf(ColumnInfo(FieldType.STRING, "a"), ColumnInfo(FieldType.INTEGER, "b"), ColumnInfo(FieldType.FLOAT, "c")), metadata.columnInfos)
+        assertEquals(listOf(ColumnInfo(FieldType.STRING, "a"), ColumnInfo(FieldType.INTEGER, "b"), ColumnInfo(FieldType.FLOAT, "c")),
+                metadata.columnInfos)
     }
 
     @Test
@@ -75,6 +76,7 @@ class CsvReaderTest {
         """.trimIndent())))
         val metadataProvider = DatasetMetadataProvider(fileSystem, dataProvider)
         val metadata = metadataProvider.getOrCreate(dataPath)
-        assertEquals(listOf(ColumnInfo(FieldType.STRING, "a"), ColumnInfo(FieldType.STRING, "b"), ColumnInfo(FieldType.STRING, "c")), metadata.columnInfos)
+        assertEquals(listOf(ColumnInfo(FieldType.STRING, "a"), ColumnInfo(FieldType.STRING, "b"), ColumnInfo(FieldType.STRING, "c")),
+                metadata.columnInfos)
     }
 }
