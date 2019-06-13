@@ -106,8 +106,10 @@ object Aggregates {
     val SUM_INT: AggregateFunctionFactory = { AggregateFunction(IntValue(0), SqlValueAtom::plus) }
     val SUM_FLOAT: AggregateFunctionFactory = { AggregateFunction(FloatValue(0.toFloat()), SqlValueAtom::plus) }
     val COUNT_ANY: AggregateFunctionFactory = { AggregateFunction(IntValue(0)) { a, _ -> a plus IntValue(1) } }
-    val MAX_INT: AggregateFunctionFactory = { AggregateFunction(IntValue(Int.MIN_VALUE), SqlValueAtom::max) }
-    val MIN_INT: AggregateFunctionFactory = { AggregateFunction(IntValue(Int.MAX_VALUE), SqlValueAtom::min) }
-    val MAX_FLOAT: AggregateFunctionFactory = { AggregateFunction(FloatValue(Float.MIN_VALUE), SqlValueAtom::max) }
-    val MIN_FLOAT: AggregateFunctionFactory = { AggregateFunction(FloatValue(Float.MAX_VALUE), SqlValueAtom::min) }
+    val MAX_INT: AggregateFunctionFactory = { AggregateFunction(IntValue(null), SqlValueAtom::max) }
+    val MIN_INT: AggregateFunctionFactory = { AggregateFunction(IntValue(null), SqlValueAtom::min) }
+    val MAX_FLOAT: AggregateFunctionFactory = { AggregateFunction(FloatValue(null), SqlValueAtom::max) }
+    val MIN_FLOAT: AggregateFunctionFactory = { AggregateFunction(FloatValue(null), SqlValueAtom::min) }
+    val MAX_STRING: AggregateFunctionFactory = { AggregateFunction(StringValue(null), SqlValueAtom::max) }
+    val MIN_STRING: AggregateFunctionFactory = { AggregateFunction(StringValue(null), SqlValueAtom::min) }
 }

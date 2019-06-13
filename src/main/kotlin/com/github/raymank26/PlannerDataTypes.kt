@@ -166,7 +166,7 @@ fun SqlValueAtom.max(other: SqlValueAtom): SqlValueAtom {
         asValue == null -> other
         type == FieldType.INTEGER -> IntValue(Math.max(asInt(), other.asInt()))
         type == FieldType.FLOAT -> FloatValue(Math.max(asFloat(), other.asFloat()))
-        type == FieldType.STRING -> throw NotImplementedError("Operation 'plus' is not implemented for string type")
+        type == FieldType.STRING -> if (asString() > other.asString()) this else other
         else -> throw IllegalStateException("Case is not handled")
     }
 }
@@ -177,7 +177,7 @@ fun SqlValueAtom.min(other: SqlValueAtom): SqlValueAtom {
         asValue == null -> other
         type == FieldType.INTEGER -> IntValue(Math.min(asInt(), other.asInt()))
         type == FieldType.FLOAT -> FloatValue(Math.min(asFloat(), other.asFloat()))
-        type == FieldType.STRING -> throw NotImplementedError("Operation 'plus' is not implemented for string type")
+        type == FieldType.STRING -> if (asString() < other.asString()) this else other
         else -> throw IllegalStateException("Case is not handled")
     }
 }
