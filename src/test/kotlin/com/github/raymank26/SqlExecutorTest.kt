@@ -11,8 +11,7 @@ class SqlExecutorTest : SqlTestUtils {
     @Test
     fun simple() {
         val dataset = executeSelect("SELECT a FROM 'a' WHERE b = 1", getDefaultDatasetFactory())
-        println(prettifyDataset(dataset))
-        assertEquals(1, dataset.rows.size)
+        assertEquals(1, dataset.rows.toList().size)
     }
 
     @Test

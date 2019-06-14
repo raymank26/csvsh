@@ -14,19 +14,21 @@ class SqlExecutor {
         } else {
             null
         }
-        var dataset = readDataset(sqlPlan, lines)
-        if (sqlPlan.groupByFields.isNotEmpty()) {
-            dataset = applyGroupBy(sqlPlan, dataset)
-        } else {
-            dataset = applySelect(sqlPlan, dataset)
+        var (dataset, resource) = readDataset(sqlPlan, lines)
+        return resource.use {
+            if (sqlPlan.groupByFields.isNotEmpty()) {
+                dataset = applyGroupBy(sqlPlan, dataset)
+            } else {
+                dataset = applySelect(sqlPlan, dataset)
+            }
+            if (sqlPlan.orderByPlanDescription != null) {
+                dataset = applyOrderBy(sqlPlan.orderByPlanDescription, dataset)
+            }
+            if (sqlPlan.limit != null) {
+                dataset = applyLimit(sqlPlan.limit, dataset)
+            }
+            dataset
         }
-        if (sqlPlan.orderByPlanDescription != null) {
-            dataset = applyOrderBy(sqlPlan.orderByPlanDescription, dataset)
-        }
-        if (sqlPlan.limit != null) {
-            dataset = applyLimit(sqlPlan.limit, dataset)
-        }
-        return dataset
     }
 
     private fun executeAtomExpressions(sqlPlan: SqlPlan): Map<ExpressionAtom, Set<Int>> {
@@ -113,37 +115,35 @@ class SqlExecutor {
         }
     }
 
-    private fun readDataset(sqlPlan: SqlPlan, rowIndexes: Set<Int>?): DatasetResult {
-        val rows = mutableListOf<DatasetRow>()
-        sqlPlan.datasetReader.getIterator().use { iterator ->
-            iterator.forEach { csvRow: DatasetRow ->
-                if (rowIndexes == null || rowIndexes.contains(csvRow.rowNum)) {
-                    rows.add(csvRow)
+    private fun readDataset(sqlPlan: SqlPlan, rowIndexes: Set<Int>?): Pair<DatasetResult, AutoCloseable> {
+        val newSequence = sqlPlan.datasetReader.getIterator()
+                .asSequence()
+                .filter { csvRow ->
+                    rowIndexes == null || rowIndexes.contains(csvRow.rowNum)
                 }
-            }
-        }
-        return DatasetResult(rows, sqlPlan.datasetReader.columnInfo)
+        return Pair(DatasetResult(newSequence, sqlPlan.datasetReader.columnInfo), sqlPlan.datasetReader.getIterator().resource
+                ?: AutoCloseable { })
     }
 
-    private fun applySelect(sqlPlan: SqlPlan, rows: DatasetResult): DatasetResult {
+    private fun applySelect(sqlPlan: SqlPlan, dataset: DatasetResult): DatasetResult {
         val allowedFields = if (sqlPlan.selectStatements.isEmpty()) {
-            rows.columnInfo.map { it.fieldName }
+            dataset.columnInfo.map { it.fieldName }
         } else {
             sqlPlan.selectStatements.asSequence().map { it as SelectFieldExpr }.map { it.fieldName }.toSet()
         }
 
-        val newRows = mutableListOf<DatasetRow>()
-        val fieldNameToInfo = rows.columnInfo.associateBy { it.fieldName }
+        val fieldNameToInfo = dataset.columnInfo.associateBy { it.fieldName }
         val newColumnInfo = allowedFields.map { fieldNameToInfo[it]!! }
-        for (row in rows.rows) {
+
+        val newSequence = dataset.rows.map { row ->
             allowedFields.map { row.getCell(it) }
             val columns = mutableListOf<SqlValueAtom>()
             for (allowedField in allowedFields) {
                 columns.add(row.getCell(allowedField))
             }
-            newRows.add(DatasetRow(row.rowNum, columns, newColumnInfo))
+            DatasetRow(row.rowNum, columns, newColumnInfo)
         }
-        return DatasetResult(newRows, newColumnInfo)
+        return DatasetResult(newSequence, newColumnInfo)
     }
 
     private fun applyGroupBy(sqlPlan: SqlPlan, rows: DatasetResult): DatasetResult {
@@ -196,7 +196,7 @@ class SqlExecutor {
         }()
 
         if (groupByBuckets.isEmpty()) {
-            return DatasetResult(emptyList(), newColumnInfo)
+            return DatasetResult(emptySequence(), newColumnInfo)
         }
 
         val newRows = mutableListOf<DatasetRow>()
@@ -211,7 +211,7 @@ class SqlExecutor {
             }
             newRows.add(DatasetRow(rowNum++, columns, newColumnInfo))
         }
-        return DatasetResult(newRows, newColumnInfo)
+        return DatasetResult(newRows.asSequence(), newColumnInfo)
     }
 
     private fun applyOrderBy(orderByStmt: OrderByPlanDescription, dataset: DatasetResult): DatasetResult {

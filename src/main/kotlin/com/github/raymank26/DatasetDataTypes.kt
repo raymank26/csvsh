@@ -22,7 +22,7 @@ class FilesystemDatasetReaderFactory(
     }
 }
 
-data class DatasetResult(val rows: List<DatasetRow>, val columnInfo: List<ColumnInfo>)
+data class DatasetResult(val rows: Sequence<DatasetRow>, val columnInfo: List<ColumnInfo>)
 
 data class DatasetRow(val rowNum: Int,
                       val columns: List<SqlValueAtom>,
@@ -58,7 +58,7 @@ interface DatasetReader {
     fun getIterator(): ClosableIterator<DatasetRow>
 }
 
-class ClosableIterator<T>(private val iterator: Iterator<T>, private val resource: AutoCloseable?) : Iterator<T>, AutoCloseable {
+class ClosableIterator<T>(private val iterator: Iterator<T>, val resource: AutoCloseable?) : Iterator<T>, AutoCloseable {
     override fun hasNext(): Boolean {
         return iterator.hasNext()
     }

@@ -29,7 +29,7 @@ class ReplInterpreter {
                 .build()
         while (true) {
             val line = try {
-                lineReader.readLine("sh>> ")
+                lineReader.readLine("csvsh>> ")
             } catch (e: EndOfFileException) {
                 return
             } catch (e: UserInterruptException) {
@@ -50,11 +50,11 @@ class ReplInterpreter {
 
 fun prettifyDataset(dataset: DatasetResult): String {
     val header = dataset.columnInfo.map { it.fieldName }.toTypedArray()
-    var rows = dataset.rows.asSequence().map { row ->
+    var rows = dataset.rows.map { row ->
         row.columns.map { col ->
             col.toText()
         }.toTypedArray()
-    }
+    }.toList()
 
     val rowsLimit = 20
     var overflow = false
