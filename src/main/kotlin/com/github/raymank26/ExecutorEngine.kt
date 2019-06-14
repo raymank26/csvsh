@@ -34,7 +34,7 @@ class ExecutorEngine {
             }
             is DescribeStatement -> {
                 val description = ssExecutor.describeTable(parsedStatement.ctx, datasetReaderFactory)
-                TextResponse(description.toString())
+                DatasetResponse(description)
             }
             is SelectStatement -> {
                 val planDescriptor = sqlPlanner.createPlan(parsedStatement.ctx, datasetReaderFactory)

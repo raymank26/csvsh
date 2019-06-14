@@ -23,9 +23,12 @@ class ServiceStatementsExecutor(private val datasetMetadataProvider: DatasetMeta
         return FilesystemDatasetReaderFactory(datasetMetadataProvider, fileSystem, contentDataProvider)
     }
 
-    fun describeTable(ctx: SqlParser.DescribeContext, readerFactory: DatasetReaderFactory): List<ColumnInfo> {
-        val csvPath = Paths.get(ctx.table().text)
-        return readerFactory.getReader(csvPath)?.columnInfo
+    fun describeTable(ctx: SqlParser.DescribeContext, readerFactory: DatasetReaderFactory): DatasetResult {
+        val csvPath = Paths.get(ctx.table().IDENTIFIER_Q().text.drop(1).dropLast(1))
+        val columnInfo = readerFactory.getReader(csvPath)?.columnInfo
                 ?: throw PlannerException("No csv found for path = $csvPath")
+        var row = 0
+        val newColumnInfo = listOf(ColumnInfo(FieldType.STRING, "columnName"), ColumnInfo(FieldType.STRING, "columnType"))
+        return DatasetResult(columnInfo.map { DatasetRow(row++, listOf(StringValue(it.fieldName), StringValue(it.type.name)), newColumnInfo) }, newColumnInfo)
     }
 }
