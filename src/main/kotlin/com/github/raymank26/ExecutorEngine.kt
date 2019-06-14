@@ -19,12 +19,7 @@ class ExecutorEngine {
             fileSystem, contentDataProvider, indexesManager)
 
     fun execute(inputLine: String): ExecutorResponse {
-        val parsedStatement: StatementType
-        try {
-            parsedStatement = sqlParser.parse(inputLine)
-        } catch (e: SyntaxException) {
-            return TextResponse(e.message!!)
-        }
+        val parsedStatement: StatementType = sqlParser.parse(inputLine)
         val datasetReaderFactory = ssExecutor.createDatasetReaderFactory()
 
         return when (parsedStatement) {

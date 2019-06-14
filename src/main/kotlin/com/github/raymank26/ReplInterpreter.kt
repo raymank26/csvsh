@@ -39,10 +39,18 @@ class ReplInterpreter {
                 continue
             }
 
-            when (val response = engine.execute(line)) {
-                is DatasetResponse -> println(prettifyDataset(response.value))
-                is TextResponse -> println(response.value)
-                is VoidResponse -> Unit
+            try {
+                when (val response = engine.execute(line)) {
+                    is DatasetResponse -> println(prettifyDataset(response.value))
+                    is TextResponse -> println(response.value)
+                    is VoidResponse -> Unit
+                }
+            } catch (e: PlannerException) {
+                println("Unable to build plan: ${e.message}")
+            } catch (e: ExecutorException) {
+                println("Unable to execute statement: ${e.message}")
+            } catch (e: SyntaxException) {
+                println("Syntax exception: ${e.message}")
             }
         }
     }
