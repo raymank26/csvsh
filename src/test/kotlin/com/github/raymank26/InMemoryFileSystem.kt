@@ -1,12 +1,15 @@
 package com.github.raymank26
 
 import com.github.raymank26.file.FileSystem
+import com.github.raymank26.file.NavigableReader
 import org.mapdb.DB
 import org.mapdb.DBMaker
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import java.io.InputStream
+import java.io.InputStreamReader
 import java.io.OutputStream
+import java.io.Reader
 import java.nio.file.Path
 
 /**
@@ -26,6 +29,10 @@ class InMemoryFileSystem(private val contentMapping: Map<Path, String>, private 
         return requireNotNull(indexesMapping[path]?.let { DBMaker.fileDB(it.toFile()).make() }) { "Index for path does not exist" }
     }
 
+    override fun getNavigableReader(path: Path): NavigableReader {
+        return requireNotNull(contentMapping[path]?.let { ByteArrayFile(it.toByteArray()) }) { "Path doesn't exist, path = $path" }
+    }
+
     override fun getInputStream(path: Path): InputStream {
         return requireNotNull(contentMapping[path]?.let { ByteArrayInputStream(it.toByteArray()) }) { "Path doesn't exist, path = $path" }
     }
@@ -34,5 +41,21 @@ class InMemoryFileSystem(private val contentMapping: Map<Path, String>, private 
         return outputMapping.compute(path) { _, prev ->
             prev ?: ByteArrayOutputStream()
         }!!
+    }
+}
+
+class ByteArrayFile(private val buf: ByteArray) : NavigableReader {
+
+    private var reader = InputStreamReader(ByteArrayInputStream(buf, 0, buf.size))
+
+    override fun asReader(): Reader {
+        return reader
+    }
+
+    override fun seek(offset: Long) {
+        reader = InputStreamReader(ByteArrayInputStream(buf, offset.toInt(), buf.size))
+    }
+
+    override fun close() {
     }
 }

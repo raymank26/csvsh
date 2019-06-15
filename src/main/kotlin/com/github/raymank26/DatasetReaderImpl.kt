@@ -1,9 +1,9 @@
 package com.github.raymank26
 
-import java.io.Reader
+import com.github.raymank26.file.NavigableReader
 
 class DatasetReaderImpl(private val contentDataProvider: ContentDataProvider,
-                        private val readerFactory: () -> Reader,
+                        private val readerFactory: () -> NavigableReader,
                         override val columnInfo: List<ColumnInfo>,
                         override val availableIndexes: List<IndexDescriptionAndPath>) : DatasetReader {
 
@@ -11,9 +11,21 @@ class DatasetReaderImpl(private val contentDataProvider: ContentDataProvider,
         if (columnInfo.isEmpty()) {
             return ClosableSequence(emptySequence(), null)
         }
-        var i = 0
-        return contentDataProvider.get(readerFactory()).map { columns ->
-            DatasetRow(i++, columnInfo.mapIndexed { i, col -> createSqlAtom(columns[i], col.type) }, columnInfo)
+        return contentDataProvider.get(readerFactory()).transform(toRows())
+    }
+
+    override fun getIterator(offsets: List<Long>): ClosableSequence<DatasetRow> {
+        if (columnInfo.isEmpty()) {
+            return ClosableSequence(emptySequence(), null)
+        }
+        return contentDataProvider.get(readerFactory(), offsets).transform(toRows())
+    }
+
+    private fun toRows(): (Sequence<List<String?>>) -> Sequence<DatasetRow> {
+        return { seq ->
+            seq.mapIndexed { i, columns ->
+                DatasetRow(i, columnInfo.mapIndexed { j, col -> createSqlAtom(columns[j], col.type) }, columnInfo)
+            }
         }
     }
 }

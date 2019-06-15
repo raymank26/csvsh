@@ -5,11 +5,8 @@ import com.google.common.hash.Hashing
 import com.google.common.io.ByteStreams
 import org.mapdb.DB
 import java.io.InputStream
-import java.io.InputStreamReader
 import java.io.OutputStream
-import java.io.OutputStreamWriter
 import java.io.Reader
-import java.io.Writer
 import java.nio.file.Path
 
 interface FileSystem {
@@ -18,15 +15,9 @@ interface FileSystem {
 
     fun getDB(path: Path): DB
 
+    fun getNavigableReader(path: Path): NavigableReader
+
     fun getInputStream(path: Path): InputStream
-
-    fun getReader(path: Path): Reader {
-        return InputStreamReader(getInputStream(path))
-    }
-
-    fun getWriter(path: Path): Writer {
-        return OutputStreamWriter(getOutputStream(path))
-    }
 
     fun getOutputStream(path: Path): OutputStream
 
@@ -38,6 +29,11 @@ interface FileSystem {
             Md5Hash(hashing.hash().asBytes())
         }
     }
+}
+
+interface NavigableReader : AutoCloseable {
+    fun asReader(): Reader
+    fun seek(offset: Long)
 }
 
 data class Md5Hash(val content: ByteArray) {

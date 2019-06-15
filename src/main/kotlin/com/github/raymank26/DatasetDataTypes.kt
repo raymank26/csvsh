@@ -17,7 +17,7 @@ class FilesystemDatasetReaderFactory(
 
     override fun getReader(path: Path): DatasetReader? {
         val metadata = datasetMetadataProvider.getOrCreate(path)
-        return DatasetReaderImpl(contentDataProvider, { fileSystem.getReader(path) }, metadata.columnInfos, metadata.indexes)
+        return DatasetReaderImpl(contentDataProvider, { fileSystem.getNavigableReader(path) }, metadata.columnInfos, metadata.indexes)
     }
 }
 
@@ -55,6 +55,8 @@ interface DatasetReader {
     val availableIndexes: List<IndexDescriptionAndPath>
 
     fun getIterator(): ClosableSequence<DatasetRow>
+
+    fun getIterator(offsets: List<Long>): ClosableSequence<DatasetRow>
 }
 
 class ClosableSequence<T>(private val sequence: Sequence<T>, private val resource: AutoCloseable?) : AutoCloseable {

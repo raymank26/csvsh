@@ -4,7 +4,6 @@ import org.apache.commons.csv.CSVFormat
 import org.junit.After
 import org.junit.Before
 import org.junit.Test
-import java.io.StringReader
 import java.nio.file.Files
 import java.nio.file.Paths
 import kotlin.test.assertEquals
@@ -28,9 +27,11 @@ class CsvReaderTest {
 
     @Test
     fun testDatasetReader() {
-        val header = dataProvider.header(StringReader(testInput))
+        val dataPath = Paths.get("/path/content.csv")
+        val fileSystem = InMemoryFileSystem(mapOf(Pair(dataPath, testInput)))
+        val header = dataProvider.header(fileSystem.getNavigableReader(dataPath))
         assertEquals(listOf("a", "b", "c"), header)
-        val content = dataProvider.get(StringReader(testInput)).toList()
+        val content = dataProvider.get(fileSystem.getNavigableReader(dataPath)).toList()
         assertEquals(3, content.size)
         assertEquals(null, content[0][0])
         assertEquals(null, content[1][1])
@@ -38,25 +39,30 @@ class CsvReaderTest {
 
     @Test
     fun testEmptyReader() {
-        val input = ""
-        val header = dataProvider.header(StringReader(input))
+        val dataPath = Paths.get("/path/content.csv")
+        val fileSystem = InMemoryFileSystem(mapOf(Pair(dataPath, "")))
+        val header = dataProvider.header(fileSystem.getNavigableReader(dataPath))
         assertEquals(emptyList(), header)
-        val content = dataProvider.get(StringReader(input)).toList()
+        val content = dataProvider.get(fileSystem.getNavigableReader(dataPath)).toList()
         assertEquals(emptyList(), content)
     }
 
     @Test
     fun testHeaderOnly() {
-        val input = "a,b,c"
-        val header = dataProvider.header(StringReader(input))
+        val headerContent = "a,b,c"
+        val dataPath = Paths.get("/path/content.csv")
+        val fileSystem = InMemoryFileSystem(mapOf(Pair(dataPath, headerContent)))
+        val header = dataProvider.header(fileSystem.getNavigableReader(dataPath))
         assertEquals(listOf("a", "b", "c"), header)
-        val content = dataProvider.get(StringReader(input)).toList()
+        val content = dataProvider.get(fileSystem.getNavigableReader(dataPath)).toList()
         assertEquals(emptyList(), content)
     }
 
     @Test
     fun testMap() {
-        val content: List<List<String?>?> = dataProvider.get(StringReader(testInput))
+        val dataPath = Paths.get("/path/content.csv")
+        val fileSystem = InMemoryFileSystem(mapOf(Pair(dataPath, testInput)))
+        val content: List<List<String?>?> = dataProvider.get(fileSystem.getNavigableReader(dataPath))
                 .map { it.plus("1") }
                 .map { it.plus("2") }
                 .toList()
@@ -132,6 +138,20 @@ class CsvReaderTest {
                 listOf(IndexDescription("aIndex", "a"), IndexDescription("bIndex", "b"), IndexDescription("cIndex", "c")),
                 metadata.indexes.map { it.description })
         println(metadata)
+    }
+
+    @Test
+    fun testOffsets() {
+        val dataPath = Paths.get("/path/content.csv")
+        val inMemoryFS = InMemoryFileSystem(mapOf(Pair(dataPath, testInput)))
+
+        val indexesManager = IndexesManager(inMemoryFS)
+        val metadataProvider = DatasetMetadataProvider(inMemoryFS, dataProvider, indexesManager)
+        val readerFactory = FilesystemDatasetReaderFactory(metadataProvider, inMemoryFS, dataProvider)
+        val reader = readerFactory.getReader(dataPath)!!
+
+        val rows = reader.getIterator(listOf(6, 17, 30)).toList()
+        assertEquals(3, rows.size)
     }
 
     @Before

@@ -2,13 +2,13 @@ package com.github.raymank26
 
 import com.github.raymank26.file.FileSystem
 import com.github.raymank26.file.Md5Hash
+import com.github.raymank26.file.NavigableReader
 import com.github.raymank26.file.getFilenameWithoutExtension
 import com.google.common.io.BaseEncoding
 import org.apache.commons.csv.CSVFormat
 import org.apache.commons.csv.CSVParser
 import org.apache.commons.csv.CSVRecord
 import org.slf4j.LoggerFactory
-import java.io.Reader
 import java.nio.file.Path
 import java.util.Properties
 
@@ -41,7 +41,7 @@ class DatasetMetadataProvider(private val fileSystem: FileSystem,
         }
         return try {
             val prop = Properties()
-            prop.load(fileSystem.getInputStream(metadataPath))
+            prop.load(fileSystem.getNavigableReader(metadataPath).asReader())
             val md5: ByteArray = BaseEncoding.base16().lowerCase().decode(prop.getProperty("md5"))
             val columns: List<ColumnInfo> = prop.getProperty("columns")
                     .split(";")
@@ -57,9 +57,9 @@ class DatasetMetadataProvider(private val fileSystem: FileSystem,
     }
 
     private fun createAndSaveMetadata(metadataPath: Path, dataPath: Path): DatasetMetadata {
-        val headers = fileSystem.getReader(dataPath).use { dataReaderProvider.header(it) }
+        val headers = fileSystem.getNavigableReader(dataPath).use { dataReaderProvider.header(it) }
 
-        return fileSystem.getReader(dataPath).use { handle ->
+        return fileSystem.getNavigableReader(dataPath).use { handle ->
             val currentResult: MutableList<FieldType?> = headers.map { null }.toMutableList()
             dataReaderProvider.get(handle).use {
                 it.forEach { columns ->
@@ -115,36 +115,43 @@ class DatasetMetadataProvider(private val fileSystem: FileSystem,
 }
 
 interface ContentDataProvider {
-    fun header(reader: Reader): List<String>
-    fun get(reader: Reader): ClosableSequence<List<String?>>
+    fun header(reader: NavigableReader): List<String>
+    fun get(reader: NavigableReader): ClosableSequence<List<String?>>
+    fun get(reader: NavigableReader, offsets: List<Long>): ClosableSequence<List<String?>>
 }
 
 class CsvContentDataProvider(private val csvFormat: CSVFormat) : ContentDataProvider {
-    override fun header(reader: Reader): List<String> {
-        val firstRecord: CSVRecord = CSVParser(reader, csvFormat).firstOrNull() ?: return emptyList()
-        val res = toList(firstRecord).filterNotNull()
+    override fun header(reader: NavigableReader): List<String> {
+        val firstRecord: CSVRecord = CSVParser(reader.asReader(), csvFormat).firstOrNull() ?: return emptyList()
+        val res = recordToColumns(firstRecord).filterNotNull()
         if (firstRecord.size() != res.size) {
             throw IllegalStateException("Header has nulls")
         }
         return res
     }
 
-    private fun toList(record: CSVRecord): List<String?> {
-        return (0 until record.size()).map { record[it] }
-    }
-
-    override fun get(reader: Reader): ClosableSequence<List<String?>> {
-        val iterator = CSVParser(reader, csvFormat).iterator()
+    override fun get(reader: NavigableReader): ClosableSequence<List<String?>> {
+        val iterator = CSVParser(reader.asReader(), csvFormat).iterator()
         if (!iterator.hasNext()) {
             return ClosableSequence(emptySequence(), reader)
         }
         iterator.next()
-        return ClosableSequence(iterator.asSequence(), reader).map {
-            toList(it)
+        return ClosableSequence(iterator.asSequence().map { recordToColumns(it) }, reader)
+    }
+
+    override fun get(reader: NavigableReader, offsets: List<Long>): ClosableSequence<List<String?>> {
+        val rows = offsets.asSequence().mapIndexed { i, offset ->
+            reader.seek(offset)
+            val iterator = CSVParser(reader.asReader(), csvFormat, offset, i.toLong()).iterator()
+            recordToColumns(iterator.next())
         }
+        return ClosableSequence(rows, reader)
+    }
+
+    private fun recordToColumns(record: CSVRecord): List<String?> {
+        return (0 until record.size()).map { record[it] }
     }
 }
-
 
 data class DatasetMetadata(val columnInfos: List<ColumnInfo>,
                            val indexes: List<IndexDescriptionAndPath>,

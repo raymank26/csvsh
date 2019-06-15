@@ -48,4 +48,9 @@ class InMemoryDatasetReader(override val columnInfo: List<ColumnInfo>,
     override fun getIterator(): ClosableSequence<DatasetRow> {
         return ClosableSequence(datasetRows.asSequence(), null)
     }
+
+    override fun getIterator(offsets: List<Long>): ClosableSequence<DatasetRow> {
+        val offsetsSet = offsets.toSet()
+        return ClosableSequence(datasetRows.asSequence().filterIndexed { i, _ -> offsetsSet.contains(i.toLong()) }, null)
+    }
 }
