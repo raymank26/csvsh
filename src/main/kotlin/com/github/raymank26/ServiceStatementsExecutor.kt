@@ -28,9 +28,10 @@ class ServiceStatementsExecutor(private val datasetMetadataProvider: DatasetMeta
         val reader = readerFactory.getReader(csvPath)
                 ?: return DatasetResult(ClosableSequence(emptySequence()), emptyList())
         val columnInfo = reader.columnInfo
-        var row = 0
         val newColumnInfo = listOf(ColumnInfo(FieldType.STRING, "columnName"), ColumnInfo(FieldType.STRING, "columnType"))
-        val rows = columnInfo.map { DatasetRow(row++, listOf(StringValue(it.fieldName), StringValue(it.type.name)), newColumnInfo) }.asSequence()
+        val rows = columnInfo
+                .asSequence()
+                .mapIndexed { i, it -> DatasetRow(i, listOf(StringValue(it.fieldName), StringValue(it.type.name)), newColumnInfo) }
         return DatasetResult(ClosableSequence(rows, null), newColumnInfo)
     }
 }

@@ -57,7 +57,7 @@ interface DatasetReader {
     fun getIterator(): ClosableSequence<DatasetRow>
 }
 
-class ClosableSequence<T>(private val sequence: Sequence<T>, val resource: AutoCloseable?) : AutoCloseable {
+class ClosableSequence<T>(private val sequence: Sequence<T>, private val resource: AutoCloseable?) : AutoCloseable {
 
     constructor(sequence: Sequence<T>) : this(sequence, null)
 
