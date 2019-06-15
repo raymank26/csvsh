@@ -112,11 +112,6 @@ class DatasetMetadataProvider(private val fileSystem: FileSystem,
             else -> FieldType.STRING
         }
     }
-
-
-    private fun getIndexPath(dataPath: Path): Path {
-        return dataPath.parent.resolve(getFilenameWithoutExtension(dataPath) + ".index")
-    }
 }
 
 interface ContentDataProvider {

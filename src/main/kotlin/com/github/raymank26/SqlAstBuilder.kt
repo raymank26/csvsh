@@ -46,7 +46,7 @@ class SqlAstBuilder {
         return when {
             parse?.statement()?.select() != null -> SelectStatement(parse.statement().select())
             parse?.statement()?.createIndex() != null -> CreateIndexType(parse.statement().createIndex())
-            parse?.statement()?.describe() != null -> DescribeStatement(parse.statement().describe())
+            parse?.statement()?.describe() != null -> DescribeTable(parse.statement().describe())
             else -> throw RuntimeException("Unable to find appropriate construction")
         }
     }
@@ -58,4 +58,4 @@ data class CreateIndexType(val ctx: SqlParser.CreateIndexContext) : StatementTyp
 
 data class SelectStatement(val ctx: SqlParser.SelectContext) : StatementType()
 
-data class DescribeStatement(val ctx: SqlParser.DescribeContext) : StatementType()
+data class DescribeTable(val ctx: SqlParser.DescribeContext) : StatementType()

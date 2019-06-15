@@ -27,7 +27,7 @@ class ExecutorEngine {
                 ssExecutor.createIndex(parsedStatement.ctx, datasetReaderFactory)
                 VoidResponse
             }
-            is DescribeStatement -> {
+            is DescribeTable -> {
                 val description = ssExecutor.describeTable(parsedStatement.ctx, datasetReaderFactory)
                 DatasetResponse(description)
             }
