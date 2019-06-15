@@ -20,6 +20,7 @@ class ReplInterpreter {
         val engine = ExecutorEngine()
         val terminal = TerminalBuilder.builder()
                 .build()
+        val outputWriter = terminal.writer()
         val lineReader = LineReaderBuilder.builder()
                 .terminal(terminal)
                 .variable(LineReader.HISTORY_FILE, Paths.get(System.getProperty("user.home"), ".csvsh_history"))
@@ -41,16 +42,16 @@ class ReplInterpreter {
 
             try {
                 when (val response = engine.execute(line)) {
-                    is DatasetResponse -> println(prettifyDataset(response.value))
-                    is TextResponse -> println(response.value)
+                    is DatasetResponse -> outputWriter.println(prettifyDataset(response.value))
+                    is TextResponse -> outputWriter.println(response.value)
                     is VoidResponse -> Unit
                 }
             } catch (e: PlannerException) {
-                println("Unable to build plan: ${e.message}")
+                outputWriter.println("Unable to build plan: ${e.message}")
             } catch (e: ExecutorException) {
-                println("Unable to execute statement: ${e.message}")
+                outputWriter.println("Unable to execute statement: ${e.message}")
             } catch (e: SyntaxException) {
-                println("Syntax exception: ${e.message}")
+                outputWriter.println("Syntax exception: ${e.message}")
             }
         }
     }
@@ -58,17 +59,17 @@ class ReplInterpreter {
 
 fun prettifyDataset(dataset: DatasetResult): String {
     val header = dataset.columnInfo.map { it.fieldName }.toTypedArray()
+    val rowsLimit = 20
     var rows = dataset.rows.map { row ->
         row.columns.map { col ->
             col.toText()
         }.toTypedArray()
-    }.toList()
+    }.take(rowsLimit + 1).toList()
 
-    val rowsLimit = 20
-    var overflow = false
-    if (rows.count() > rowsLimit) {
-        overflow = true
-        rows = rows.take(rowsLimit)
+
+    val overflow = rows.size == rowsLimit + 1
+    if (overflow) {
+        rows = rows.dropLast(1)
     }
 
     return FlipTable.of(header, rows.toList().toTypedArray()) +
