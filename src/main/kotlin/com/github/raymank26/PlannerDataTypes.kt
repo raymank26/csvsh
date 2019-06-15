@@ -133,7 +133,7 @@ infix fun SqlValueAtom.lt(other: SqlValueAtom): Boolean {
 infix fun SqlValueAtom.lte(other: SqlValueAtom): Boolean {
     return when {
         asValue == null || other.asValue == null -> false
-        type == FieldType.INTEGER -> asInt() <= other.asFloat()
+        type == FieldType.INTEGER -> asInt() <= other.asInt()
         type == FieldType.FLOAT -> asFloat() <= other.asFloat()
         type == FieldType.STRING -> asString() <= other.asString()
         else -> throw IllegalStateException("Case is not handled")
@@ -265,10 +265,7 @@ data class OrderByPlanDescription(
         val desc: Boolean
 )
 
-data class WherePlanDescription(
-        val expressionsBySource: Map<ScanSource, List<ExpressionAtom>>,
-        val expressionTree: Expression
-)
+data class WherePlanDescription(val expressionTree: Expression)
 
 
 

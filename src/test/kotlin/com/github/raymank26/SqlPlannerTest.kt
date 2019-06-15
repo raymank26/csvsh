@@ -3,7 +3,6 @@ package com.github.raymank26
 import org.junit.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
-import kotlin.test.fail
 
 /**
  * Date: 2019-05-13.
@@ -20,12 +19,30 @@ class SqlPlannerTest : SqlTestUtils {
     fun testWherePlan() {
         val planDescription: SqlPlan = makePlan(
                 "SELECT * FROM 'a' WHERE (5 > a AND (a > 2) AND b IN (1,2,3) OR c = 4)")
-        val expBySource = planDescription.wherePlanDescription?.expressionsBySource ?: fail("Unable to find where plan")
-
-        assertEquals(3, expBySource.size)
-        assertEquals(2, expBySource.getValue(IndexInput("aIndex")).size)
-        assertEquals(1, expBySource.getValue(IndexInput("bIndex")).size)
-        assertEquals(1, expBySource.getValue(CsvInput).size)
+        val expectedExpr = ExpressionNode(
+                left = ExpressionNode(
+                        left = ExpressionNode(
+                                left = ExpressionAtom(
+                                        leftVal = RefValue("a"),
+                                        operator = Operator.LESS_THAN,
+                                        rightVal = IntValue(5)),
+                                operator = ExpressionOperator.AND,
+                                right = ExpressionAtom(
+                                        leftVal = RefValue("a"),
+                                        operator = Operator.GREATER_THAN,
+                                        rightVal = IntValue(2))),
+                        operator = ExpressionOperator.AND,
+                        right = ExpressionAtom(
+                                leftVal = RefValue(name = "b"),
+                                operator = Operator.IN,
+                                rightVal = ListValue(
+                                        value = listOf(IntValue(1), IntValue(2), IntValue(3))))),
+                operator = ExpressionOperator.OR,
+                right = ExpressionAtom(
+                        leftVal = RefValue("c"),
+                        operator = Operator.EQ,
+                        rightVal = IntValue(4)))
+        assertEquals(expectedExpr, planDescription.wherePlanDescription?.expressionTree)
     }
 
     @Test

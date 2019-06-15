@@ -8,18 +8,15 @@ import java.util.regex.Pattern
 class SqlExecutor {
 
     fun execute(sqlPlan: SqlPlan): DatasetResult {
-        val lines = if (sqlPlan.wherePlanDescription != null) {
-            val expressionToLines = executeAtomExpressions(sqlPlan)
-            ExpressionTreeEvaluator(expressionToLines).visitExpression(sqlPlan.wherePlanDescription.expressionTree)
-        } else {
-            null
-        }
-        var (dataset, resource) = readDataset(sqlPlan, lines)
+        var (dataset, resource) = readDataset(sqlPlan)
         return resource.use {
-            if (sqlPlan.groupByFields.isNotEmpty()) {
-                dataset = applyGroupBy(sqlPlan, dataset)
+            if (sqlPlan.wherePlanDescription != null) {
+                dataset = applyWhere(sqlPlan, dataset)
+            }
+            dataset = if (sqlPlan.groupByFields.isNotEmpty()) {
+                applyGroupBy(sqlPlan, dataset)
             } else {
-                dataset = applySelect(sqlPlan, dataset)
+                applySelect(sqlPlan, dataset)
             }
             if (sqlPlan.orderByPlanDescription != null) {
                 dataset = applyOrderBy(sqlPlan.orderByPlanDescription, dataset)
@@ -31,22 +28,10 @@ class SqlExecutor {
         }
     }
 
-    private fun executeAtomExpressions(sqlPlan: SqlPlan): Map<ExpressionAtom, Set<Int>> {
-        if (sqlPlan.wherePlanDescription == null) {
-            return emptyMap()
-        }
-
-        val result = mutableMapOf<ExpressionAtom, Set<Int>>()
-        for ((scanSource, atoms) in sqlPlan.wherePlanDescription.expressionsBySource) {
-            val exp = when (scanSource) {
-                is CsvInput -> evalOverCsv(sqlPlan, atoms)
-                is IndexInput -> {
-                    evalOverIndex(sqlPlan, scanSource.name, atoms)
-                }
-            }
-            result.putAll(exp)
-        }
-        return result
+    private fun applyWhere(sqlPlan: SqlPlan, dataset: DatasetResult): DatasetResult {
+        return dataset.copy(rows = dataset.rows.filter { row ->
+            ExpressionTreeEvaluator(row).visitExpression(sqlPlan.wherePlanDescription!!.expressionTree) ?: true
+        })
     }
 
     private fun evalOverIndex(sqlPlan: SqlPlan, indexName: String, expressions: List<ExpressionAtom>): Map<ExpressionAtom, Set<Int>> {
@@ -70,57 +55,8 @@ class SqlExecutor {
         return result
     }
 
-    private fun evalOverCsv(sqlPlan: SqlPlan, atoms: List<ExpressionAtom>): Map<ExpressionAtom, Set<Int>> {
-        val result = mutableMapOf<ExpressionAtom, MutableSet<Int>>()
-        sqlPlan.datasetReader.getIterator().use { iterator ->
-            iterator.forEach { row: DatasetRow ->
-                for (expression in atoms) {
-                    if (isRowApplicable(row, expression)) {
-                        result.compute(expression) { _, bs ->
-                            return@compute if (bs == null) {
-                                mutableSetOf(row.rowNum)
-                            } else {
-                                bs.add(row.rowNum)
-                                bs
-                            }
-                        }
-                    }
-                }
-            }
-        }
-        return result
-    }
-
-    private fun isRowApplicable(row: DatasetRow, atom: ExpressionAtom): Boolean {
-        val fieldName = (atom.leftVal as RefValue).name
-        val columnValue = row.getCell(fieldName)
-        return checkAtom(atom, columnValue, atom.rightVal)
-    }
-
-    private fun checkAtom(atom: ExpressionAtom, fieldValue: SqlValueAtom, sqlValue: SqlValue): Boolean {
-        return when (atom.operator) {
-            Operator.LESS_THAN -> fieldValue lt (sqlValue as SqlValueAtom)
-            Operator.LESS_EQ_THAN -> fieldValue lte (sqlValue as SqlValueAtom)
-            Operator.GREATER_THAN -> fieldValue gt (sqlValue as SqlValueAtom)
-            Operator.GREATER_EQ_THAN -> fieldValue gte (sqlValue as SqlValueAtom)
-            Operator.EQ -> fieldValue eq (sqlValue as SqlValueAtom)
-            Operator.IN -> (sqlValue as ListValue).value.any { it eq fieldValue }
-            Operator.LIKE -> {
-                val stringContent = (sqlValue as StringValue).value
-                        ?: return false
-                // TODO: actually, SQL pattern matching is a great deal more complicated.
-                val regExValue = stringContent.replace("%", ".*").replace('%', '?')
-                Pattern.compile(regExValue).toRegex().matches(stringContent)
-            }
-        }
-    }
-
-    private fun readDataset(sqlPlan: SqlPlan, rowIndexes: Set<Int>?): Pair<DatasetResult, AutoCloseable> {
-        val newSequence = sqlPlan.datasetReader.getIterator()
-                .asSequence()
-                .filter { csvRow ->
-                    rowIndexes == null || rowIndexes.contains(csvRow.rowNum)
-                }
+    private fun readDataset(sqlPlan: SqlPlan): Pair<DatasetResult, AutoCloseable> {
+        val newSequence = sqlPlan.datasetReader.getIterator().asSequence()
         return Pair(DatasetResult(newSequence, sqlPlan.datasetReader.columnInfo), sqlPlan.datasetReader.getIterator().resource
                 ?: AutoCloseable { })
     }
@@ -242,18 +178,39 @@ val AGGREGATES_MAPPING: Map<Pair<String, FieldType>, AggregateFunctionFactory> =
         Pair(Pair("count", FieldType.STRING), Aggregates.COUNT_ANY)
 )
 
-private class ExpressionTreeEvaluator(private val atomsToBitSet: Map<ExpressionAtom, Set<Int>>) : BaseExpressionVisitor<Set<Int>>() {
-    override fun visitAtom(atom: ExpressionAtom): Set<Int> {
-        return atomsToBitSet.getOrDefault(atom, emptySet())
+private class ExpressionTreeEvaluator(private val datasetRow: DatasetRow) : BaseExpressionVisitor<Boolean>() {
+    override fun visitAtom(atom: ExpressionAtom): Boolean {
+        val fieldName = (atom.leftVal as RefValue).name
+        val columnValue = datasetRow.getCell(fieldName)
+        return checkAtom(atom, columnValue, atom.rightVal)
     }
 
-    override fun visitNode(node: ExpressionNode): Set<Int> {
-        val leftLines = requireNotNull(node.left.accept(this), { "Left lines is null" })
-        val rightLines = requireNotNull(node.right.accept(this), { "Right lines is null" })
+    override fun visitNode(node: ExpressionNode): Boolean {
+        val leftResult = requireNotNull(node.left.accept(this), { "Left lines is null" })
+        val rightResult = requireNotNull(node.right.accept(this), { "Right lines is null" })
 
         return when (node.operator) {
-            ExpressionOperator.AND -> leftLines.intersect(rightLines)
-            ExpressionOperator.OR -> leftLines.union(rightLines)
+            ExpressionOperator.AND -> leftResult && rightResult
+            ExpressionOperator.OR -> leftResult || rightResult
         }
     }
+
+    private fun checkAtom(atom: ExpressionAtom, fieldValue: SqlValueAtom, sqlValue: SqlValue): Boolean {
+        return when (atom.operator) {
+            Operator.LESS_THAN -> fieldValue lt (sqlValue as SqlValueAtom)
+            Operator.LESS_EQ_THAN -> fieldValue lte (sqlValue as SqlValueAtom)
+            Operator.GREATER_THAN -> fieldValue gt (sqlValue as SqlValueAtom)
+            Operator.GREATER_EQ_THAN -> fieldValue gte (sqlValue as SqlValueAtom)
+            Operator.EQ -> fieldValue eq (sqlValue as SqlValueAtom)
+            Operator.IN -> (sqlValue as ListValue).value.any { it eq fieldValue }
+            Operator.LIKE -> {
+                val stringContent = (sqlValue as StringValue).value
+                        ?: return false
+                // TODO: actually, SQL pattern matching is a great deal more complicated.
+                val regExValue = stringContent.replace("%", ".*").replace('%', '?')
+                Pattern.compile(regExValue).toRegex().matches(stringContent)
+            }
+        }
+    }
+
 }

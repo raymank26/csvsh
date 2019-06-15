@@ -13,7 +13,7 @@ class SqlPlanner {
         val tablePath = Paths.get(sqlAst.table().IDENTIFIER_Q().text.drop(1).dropLast(1))
         val reader = datasetReaderFactory.getReader(tablePath)
                 ?: throw PlannerException("Unable to find input for path = $tablePath")
-        val sqlWherePlan = sqlAst.whereExpr()?.let { SqlWhereVisitor(reader.availableIndexes).visit(it) }
+        val sqlWherePlan = sqlAst.whereExpr()?.let { SqlWhereVisitor().visit(it) }
         val selectStatements: List<SelectStatementExpr> = if (sqlAst.selectExpr().allColumns() != null) {
             emptyList()
         } else {
@@ -66,7 +66,7 @@ class SqlPlanner {
     }
 }
 
-private class SqlWhereVisitor(private val availableIndexes: List<IndexDescriptionAndPath>) : SqlBaseVisitor<WherePlanDescription?>() {
+private class SqlWhereVisitor : SqlBaseVisitor<WherePlanDescription?>() {
 
     override fun visitWhereExprAtom(ctx: SqlParser.WhereExprAtomContext): WherePlanDescription {
         var left = parseVariable(ctx.variable(0))
@@ -74,30 +74,21 @@ private class SqlWhereVisitor(private val availableIndexes: List<IndexDescriptio
         var operator = Operator.TOKEN_TO_OPERATOR[ctx.BOOL_COMP().text]
                 ?: throw RuntimeException("Unable to parse operator ${ctx.BOOL_COMP().text}")
 
-        val source: ScanSource
-        when {
-            left is RefValue && right !is RefValue -> {
-                source = getSource(left.name, operator)
+        if (right is RefValue && left !is RefValue) {
+            val temp: SqlValue = left
+            left = right
+            right = temp
+            operator = when (operator) {
+                Operator.LESS_THAN -> Operator.GREATER_THAN
+                Operator.GREATER_THAN -> Operator.LESS_THAN
+                Operator.LIKE -> Operator.LIKE
+                Operator.IN -> Operator.IN
+                Operator.EQ -> Operator.EQ
+                Operator.LESS_EQ_THAN -> Operator.GREATER_EQ_THAN
+                Operator.GREATER_EQ_THAN -> Operator.LESS_EQ_THAN
             }
-            right is RefValue && left !is RefValue -> {
-                val temp: SqlValue = left
-                left = right
-                right = temp
-                operator = when (operator) {
-                    Operator.LESS_THAN -> Operator.GREATER_THAN
-                    Operator.GREATER_THAN -> Operator.LESS_THAN
-                    Operator.LIKE -> Operator.LIKE
-                    Operator.IN -> Operator.IN
-                    Operator.EQ -> Operator.EQ
-                    Operator.LESS_EQ_THAN -> Operator.GREATER_EQ_THAN
-                    Operator.GREATER_EQ_THAN -> Operator.LESS_EQ_THAN
-                }
-                source = getSource(left.name, operator)
-            }
-            else -> throw PlannerException("Left or right expression has to be a CSV field")
         }
-        val atom = ExpressionAtom(left, operator, right)
-        return WherePlanDescription(mutableMapOf(Pair(source, mutableListOf(atom))), atom)
+        return WherePlanDescription(ExpressionAtom(left, operator, right))
     }
 
     override fun visitWhereExprIn(ctx: SqlParser.WhereExprInContext): WherePlanDescription {
@@ -118,8 +109,7 @@ private class SqlWhereVisitor(private val availableIndexes: List<IndexDescriptio
             variables.add(parsedVariable)
         }
         val atom = ExpressionAtom(field, Operator.IN, ListValue(variables))
-        return WherePlanDescription(
-                mutableMapOf(Pair(getSource(field.name, Operator.IN), mutableListOf(atom))), atom)
+        return WherePlanDescription(atom)
     }
 
     override fun visitWhereExprBool(ctx: SqlParser.WhereExprBoolContext): WherePlanDescription {
@@ -137,7 +127,7 @@ private class SqlWhereVisitor(private val availableIndexes: List<IndexDescriptio
             else -> throw RuntimeException("Unable to parse operator expression")
         }
         val expression = ExpressionNode(left.expressionTree, operator, right.expressionTree)
-        return WherePlanDescription(mergeAtomPlans(left.expressionsBySource, right.expressionsBySource), expression)
+        return WherePlanDescription(expression)
     }
 
     override fun aggregateResult(aggregate: WherePlanDescription?, nextResult: WherePlanDescription?): WherePlanDescription? {
@@ -156,34 +146,6 @@ private class SqlWhereVisitor(private val availableIndexes: List<IndexDescriptio
             "reference" -> RefValue(variable.reference().text)
             else -> throw RuntimeException("Unable to parse type = ${variable.type}")
         }
-    }
-
-    private fun getSource(fieldName: String, operator: Operator): ScanSource {
-        if (operator == Operator.LIKE) {
-            return CsvInput
-        }
-        return availableIndexes.find { it.description.fieldName == fieldName }?.let { IndexInput(it.description.name) }
-                ?: CsvInput
-    }
-
-    private fun mergeAtomPlans(left: Map<ScanSource, List<ExpressionAtom>>,
-                               right: Map<ScanSource, List<ExpressionAtom>>):
-            Map<ScanSource, List<ExpressionAtom>> {
-
-        val result = mutableMapOf<ScanSource, MutableList<ExpressionAtom>>()
-        result.putAll(left.mapValues { ArrayList(it.value) })
-
-        for (entry in right) {
-            result.compute(entry.key) { _, originalExpressions ->
-                return@compute if (originalExpressions == null) {
-                    ArrayList(entry.value)
-                } else {
-                    originalExpressions.addAll(entry.value)
-                    originalExpressions
-                }
-            }
-        }
-        return result
     }
 }
 
