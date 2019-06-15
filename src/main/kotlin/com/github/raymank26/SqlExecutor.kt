@@ -8,24 +8,23 @@ import java.util.regex.Pattern
 class SqlExecutor {
 
     fun execute(sqlPlan: SqlPlan): DatasetResult {
-        var (dataset, resource) = readDataset(sqlPlan)
-        return resource.use {
-            if (sqlPlan.wherePlanDescription != null) {
-                dataset = applyWhere(sqlPlan, dataset)
-            }
-            dataset = if (sqlPlan.groupByFields.isNotEmpty()) {
-                applyGroupBy(sqlPlan, dataset)
-            } else {
-                applySelect(sqlPlan, dataset)
-            }
-            if (sqlPlan.orderByPlanDescription != null) {
-                dataset = applyOrderBy(sqlPlan.orderByPlanDescription, dataset)
-            }
-            if (sqlPlan.limit != null) {
-                dataset = applyLimit(sqlPlan.limit, dataset)
-            }
-            dataset
+        var dataset = readDataset(sqlPlan)
+
+        if (sqlPlan.wherePlanDescription != null) {
+            dataset = applyWhere(sqlPlan, dataset)
         }
+        dataset = if (sqlPlan.groupByFields.isNotEmpty()) {
+            applyGroupBy(sqlPlan, dataset)
+        } else {
+            applySelect(sqlPlan, dataset)
+        }
+        if (sqlPlan.orderByPlanDescription != null) {
+            dataset = applyOrderBy(sqlPlan.orderByPlanDescription, dataset)
+        }
+        if (sqlPlan.limit != null) {
+            dataset = applyLimit(sqlPlan.limit, dataset)
+        }
+        return dataset
     }
 
     private fun applyWhere(sqlPlan: SqlPlan, dataset: DatasetResult): DatasetResult {
@@ -55,10 +54,9 @@ class SqlExecutor {
         return result
     }
 
-    private fun readDataset(sqlPlan: SqlPlan): Pair<DatasetResult, AutoCloseable> {
-        val newSequence = sqlPlan.datasetReader.getIterator().asSequence()
-        return Pair(DatasetResult(newSequence, sqlPlan.datasetReader.columnInfo), sqlPlan.datasetReader.getIterator().resource
-                ?: AutoCloseable { })
+    private fun readDataset(sqlPlan: SqlPlan): DatasetResult {
+        val newSequence = sqlPlan.datasetReader.getIterator()
+        return DatasetResult(newSequence, sqlPlan.datasetReader.columnInfo)
     }
 
     private fun applySelect(sqlPlan: SqlPlan, dataset: DatasetResult): DatasetResult {
@@ -82,7 +80,7 @@ class SqlExecutor {
         return DatasetResult(newSequence, newColumnInfo)
     }
 
-    private fun applyGroupBy(sqlPlan: SqlPlan, rows: DatasetResult): DatasetResult {
+    private fun applyGroupBy(sqlPlan: SqlPlan, dataset: DatasetResult): DatasetResult {
         val groupByBuckets = mutableMapOf<List<Pair<ColumnInfo, SqlValueAtom>>, List<AggregateFunction>>()
         val aggStatements = sqlPlan.selectStatements.mapNotNull { it as? AggSelectExpr }
         val plainStatements = sqlPlan.selectStatements.mapNotNull { it as? SelectFieldExpr }
@@ -90,7 +88,7 @@ class SqlExecutor {
         val aggToColumnInfo = mutableListOf<ColumnInfo>()
         var plainToColumnInfo = listOf<ColumnInfo>()
 
-        for (row in rows.rows) {
+        dataset.rows.forEach { row ->
             val bucketDesc = sqlPlan.groupByFields.map { Pair(row.getColumnInfo(it)!!, row.getCell(it)) }
             if (plainToColumnInfo.isEmpty()) {
                 for (plainStatement in plainStatements) {
@@ -132,7 +130,7 @@ class SqlExecutor {
         }()
 
         if (groupByBuckets.isEmpty()) {
-            return DatasetResult(emptySequence(), newColumnInfo)
+            return DatasetResult(ClosableSequence(emptySequence()), newColumnInfo)
         }
 
         val newRows = mutableListOf<DatasetRow>()
@@ -147,16 +145,16 @@ class SqlExecutor {
             }
             newRows.add(DatasetRow(rowNum++, columns, newColumnInfo))
         }
-        return DatasetResult(newRows.asSequence(), newColumnInfo)
+        return DatasetResult(ClosableSequence(newRows.asSequence()), newColumnInfo)
     }
 
     private fun applyOrderBy(orderByStmt: OrderByPlanDescription, dataset: DatasetResult): DatasetResult {
         val fieldName = orderByStmt.field.fullFieldName
         val f = { row: DatasetRow -> row.getCell(fieldName) }
         val newRows = if (orderByStmt.desc) {
-            dataset.rows.sortedByDescending(f)
+            dataset.rows.transform { it.sortedByDescending(f) }
         } else {
-            dataset.rows.sortedBy(f)
+            dataset.rows.transform { it.sortedBy(f) }
         }
         return dataset.copy(rows = newRows)
     }

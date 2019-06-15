@@ -1,7 +1,6 @@
 package com.github.raymank26
 
 import com.github.raymank26.file.FileSystem
-import com.google.common.collect.Iterators
 import java.nio.file.Path
 
 /**
@@ -22,7 +21,7 @@ class FilesystemDatasetReaderFactory(
     }
 }
 
-data class DatasetResult(val rows: Sequence<DatasetRow>, val columnInfo: List<ColumnInfo>)
+data class DatasetResult(val rows: ClosableSequence<DatasetRow>, val columnInfo: List<ColumnInfo>)
 
 data class DatasetRow(val rowNum: Int,
                       val columns: List<SqlValueAtom>,
@@ -55,28 +54,43 @@ interface DatasetReader {
     val columnInfo: List<ColumnInfo>
     val availableIndexes: List<IndexDescriptionAndPath>
 
-    fun getIterator(): ClosableIterator<DatasetRow>
+    fun getIterator(): ClosableSequence<DatasetRow>
 }
 
-class ClosableIterator<T>(private val iterator: Iterator<T>, val resource: AutoCloseable?) : Iterator<T>, AutoCloseable {
-    override fun hasNext(): Boolean {
-        return iterator.hasNext()
-    }
+class ClosableSequence<T>(private val sequence: Sequence<T>, val resource: AutoCloseable?) : AutoCloseable {
 
-    override fun next(): T {
-        return iterator.next()
-    }
+    constructor(sequence: Sequence<T>) : this(sequence, null)
 
     override fun close() {
         resource?.close()
     }
 
-    fun toList(): List<T> {
-        return iterator.asSequence().toList()
+    fun forEach(f: (T) -> Unit) {
+        resource.use {
+            sequence.forEach(f)
+        }
     }
 
-    fun <T2> map(f: (T) -> T2): ClosableIterator<T2> {
-        return ClosableIterator(Iterators.transform(iterator) { a -> a?.let { f(a) } }, resource)
+    fun toList(): List<T> {
+        return resource.use {
+            sequence.asSequence().toList()
+        }
+    }
+
+    fun <U> transform(f: (Sequence<T>) -> Sequence<U>): ClosableSequence<U> {
+        return ClosableSequence(f(sequence), resource)
+    }
+
+    fun <U> map(f: (T) -> U): ClosableSequence<U> {
+        return transform { it.map(f) }
+    }
+
+    fun filter(f: (T) -> Boolean): ClosableSequence<T> {
+        return transform { it.filter(f) }
+    }
+
+    fun take(n: Int): ClosableSequence<T> {
+        return transform { it.take(n) }
     }
 }
 

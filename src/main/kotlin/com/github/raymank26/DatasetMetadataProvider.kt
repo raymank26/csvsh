@@ -62,7 +62,7 @@ class DatasetMetadataProvider(private val fileSystem: FileSystem,
         return fileSystem.getReader(dataPath).use { handle ->
             val currentResult: MutableList<FieldType?> = headers.map { null }.toMutableList()
             dataReaderProvider.get(handle).use {
-                it.iterator().forEach { columns ->
+                it.forEach { columns ->
                     columns.withIndex().forEach { value ->
                         currentResult[value.index] = nextFieldType(currentResult[value.index], value.value)
                     }
@@ -116,7 +116,7 @@ class DatasetMetadataProvider(private val fileSystem: FileSystem,
 
 interface ContentDataProvider {
     fun header(reader: Reader): List<String>
-    fun get(reader: Reader): ClosableIterator<List<String?>>
+    fun get(reader: Reader): ClosableSequence<List<String?>>
 }
 
 class CsvContentDataProvider(private val csvFormat: CSVFormat) : ContentDataProvider {
@@ -133,13 +133,13 @@ class CsvContentDataProvider(private val csvFormat: CSVFormat) : ContentDataProv
         return (0 until record.size()).map { record[it] }
     }
 
-    override fun get(reader: Reader): ClosableIterator<List<String?>> {
+    override fun get(reader: Reader): ClosableSequence<List<String?>> {
         val iterator = CSVParser(reader, csvFormat).iterator()
         if (!iterator.hasNext()) {
-            return ClosableIterator(emptyList<List<String?>>().iterator(), reader)
+            return ClosableSequence(emptySequence(), reader)
         }
         iterator.next()
-        return ClosableIterator(iterator, reader).map {
+        return ClosableSequence(iterator.asSequence(), reader).map {
             toList(it)
         }
     }

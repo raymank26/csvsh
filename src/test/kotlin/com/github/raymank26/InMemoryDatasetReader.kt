@@ -45,7 +45,7 @@ class InMemoryIndex(override val type: FieldType, private val inMemoryIndex: Nav
 class InMemoryDatasetReader(override val columnInfo: List<ColumnInfo>,
                             private val datasetRows: List<DatasetRow>,
                             override val availableIndexes: List<IndexDescriptionAndPath>) : DatasetReader {
-    override fun getIterator(): ClosableIterator<DatasetRow> {
-        return ClosableIterator(datasetRows.iterator(), null)
+    override fun getIterator(): ClosableSequence<DatasetRow> {
+        return ClosableSequence(datasetRows.asSequence(), null)
     }
 }

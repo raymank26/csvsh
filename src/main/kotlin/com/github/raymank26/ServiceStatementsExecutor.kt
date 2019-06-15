@@ -25,12 +25,12 @@ class ServiceStatementsExecutor(private val datasetMetadataProvider: DatasetMeta
 
     fun describeTable(ctx: SqlParser.DescribeContext, readerFactory: DatasetReaderFactory): DatasetResult {
         val csvPath = Paths.get(ctx.table().IDENTIFIER_Q().text.drop(1).dropLast(1))
-        val reader = readerFactory.getReader(csvPath) ?: return DatasetResult(emptySequence(), emptyList())
-        return reader.getIterator().resource.use {
-            val columnInfo = reader.columnInfo
-            var row = 0
-            val newColumnInfo = listOf(ColumnInfo(FieldType.STRING, "columnName"), ColumnInfo(FieldType.STRING, "columnType"))
-            DatasetResult(columnInfo.map { DatasetRow(row++, listOf(StringValue(it.fieldName), StringValue(it.type.name)), newColumnInfo) }.asSequence(), newColumnInfo)
-        }
+        val reader = readerFactory.getReader(csvPath)
+                ?: return DatasetResult(ClosableSequence(emptySequence()), emptyList())
+        val columnInfo = reader.columnInfo
+        var row = 0
+        val newColumnInfo = listOf(ColumnInfo(FieldType.STRING, "columnName"), ColumnInfo(FieldType.STRING, "columnType"))
+        val rows = columnInfo.map { DatasetRow(row++, listOf(StringValue(it.fieldName), StringValue(it.type.name)), newColumnInfo) }.asSequence()
+        return DatasetResult(ClosableSequence(rows, null), newColumnInfo)
     }
 }
