@@ -9,8 +9,8 @@ import org.mapdb.serializer.GroupSerializer
 import java.nio.file.Path
 
 private val MAPDB_SERIALIZERS: Map<FieldType, GroupSerializer<*>> = ImmutableMap.of(
-        FieldType.INTEGER, Serializer.INTEGER,
-        FieldType.FLOAT, Serializer.FLOAT,
+        FieldType.LONG, Serializer.LONG,
+        FieldType.DOUBLE, Serializer.DOUBLE,
         FieldType.STRING, Serializer.STRING
 )
 
@@ -33,7 +33,7 @@ class IndexesManager(private val fileSystem: FileSystem) {
                 val serializer = requireNotNull(MAPDB_SERIALIZERS[FieldType.MARK_TO_FIELD_TYPE[byteMark]])
                 val tm = db.treeMap(name, serializer, Serializer.INT_ARRAY).open()
                 @Suppress("UNCHECKED_CAST")
-                val readOnlyIndex = MapDBReadonlyIndex(tm as BTreeMap<in Any, IntArray>, FieldType.INTEGER)
+                val readOnlyIndex = MapDBReadonlyIndex(tm as BTreeMap<in Any, IntArray>, FieldType.LONG)
                 result.add(IndexDescriptionAndPath(IndexDescription(indexName, fieldName), readOnlyIndex))
             }
             result

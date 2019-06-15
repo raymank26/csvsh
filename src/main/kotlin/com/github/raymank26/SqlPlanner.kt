@@ -140,8 +140,8 @@ private class SqlWhereVisitor : SqlBaseVisitor<WherePlanDescription?>() {
 
     private fun parseVariable(variable: SqlParser.VariableContext): SqlValue {
         return when (variable.type) {
-            "float" -> FloatValue(variable.floatNumber().text.toFloat())
-            "integer" -> IntValue(variable.integerNumber().text.toInt())
+            "float" -> DoubleValue(variable.floatNumber().text.toDouble())
+            "integer" -> LongValue(variable.integerNumber().text.toLong())
             "string" -> StringValue(variable.string().text.drop(1).dropLast(1))
             "reference" -> RefValue(variable.reference().text)
             else -> throw RuntimeException("Unable to parse type = ${variable.type}")

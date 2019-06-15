@@ -25,23 +25,23 @@ class SqlPlannerTest : SqlTestUtils {
                                 left = ExpressionAtom(
                                         leftVal = RefValue("a"),
                                         operator = Operator.LESS_THAN,
-                                        rightVal = IntValue(5)),
+                                        rightVal = LongValue(5)),
                                 operator = ExpressionOperator.AND,
                                 right = ExpressionAtom(
                                         leftVal = RefValue("a"),
                                         operator = Operator.GREATER_THAN,
-                                        rightVal = IntValue(2))),
+                                        rightVal = LongValue(2))),
                         operator = ExpressionOperator.AND,
                         right = ExpressionAtom(
                                 leftVal = RefValue(name = "b"),
                                 operator = Operator.IN,
                                 rightVal = ListValue(
-                                        value = listOf(IntValue(1), IntValue(2), IntValue(3))))),
+                                        value = listOf(LongValue(1), LongValue(2), LongValue(3))))),
                 operator = ExpressionOperator.OR,
                 right = ExpressionAtom(
                         leftVal = RefValue("c"),
                         operator = Operator.EQ,
-                        rightVal = IntValue(4)))
+                        rightVal = LongValue(4)))
         assertEquals(expectedExpr, planDescription.wherePlanDescription?.expressionTree)
     }
 

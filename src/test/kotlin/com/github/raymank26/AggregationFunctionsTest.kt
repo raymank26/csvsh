@@ -10,51 +10,51 @@ class AggregationFunctionsTest {
 
     @Test
     fun testSumInt() {
-        testAggregate(Aggregates.SUM_INT.invoke(), listOf(IntValue(null), IntValue(0), IntValue(1), IntValue(2)), 3)
-        testAggregate(Aggregates.SUM_INT.invoke(), listOf(IntValue(null)), 0)
+        testAggregate(Aggregates.SUM_INT.invoke(), listOf(LongValue(null), LongValue(0), LongValue(1), LongValue(2)), 3L)
+        testAggregate(Aggregates.SUM_INT.invoke(), listOf(LongValue(null)), 0L)
     }
 
     @Test
     fun testSumFloat() {
-        testAggregate(Aggregates.SUM_FLOAT.invoke(), listOf(FloatValue(null), FloatValue(0f), FloatValue(1.2f),
-                FloatValue(2.3f)), 3.5f)
-        testAggregate(Aggregates.SUM_FLOAT.invoke(), listOf(FloatValue(null)), 0f)
+        testAggregate(Aggregates.SUM_FLOAT.invoke(), listOf(DoubleValue(null), DoubleValue(0.0), DoubleValue(1.2),
+                DoubleValue(2.3)), 3.5)
+        testAggregate(Aggregates.SUM_FLOAT.invoke(), listOf(DoubleValue(null)), 0.0)
     }
 
     @Test
     fun testCount() {
-        testAggregate(Aggregates.COUNT_ANY.invoke(), listOf(FloatValue(null), FloatValue(0f), FloatValue(1.2f),
-                FloatValue(2.3f)), 4)
+        testAggregate(Aggregates.COUNT_ANY.invoke(), listOf(DoubleValue(null), DoubleValue(0.0), DoubleValue(1.2),
+                DoubleValue(2.3)), 4L)
     }
 
     @Test
     fun testMinInt() {
-        testAggregate(Aggregates.MIN_INT.invoke(), listOf(IntValue(null), IntValue(0), IntValue(1), IntValue(2)), 0)
-        testAggregate(Aggregates.MIN_INT.invoke(), listOf(IntValue(null), IntValue(-1), IntValue(1), IntValue(2)), -1)
-        testAggregate(Aggregates.MIN_INT.invoke(), listOf(IntValue(null)), null)
+        testAggregate(Aggregates.MIN_INT.invoke(), listOf(LongValue(null), LongValue(0), LongValue(1), LongValue(2)), 0L)
+        testAggregate(Aggregates.MIN_INT.invoke(), listOf(LongValue(null), LongValue(-1), LongValue(1), LongValue(2)), -1L)
+        testAggregate(Aggregates.MIN_INT.invoke(), listOf(LongValue(null)), null)
     }
 
     @Test
     fun testMaxInt() {
-        testAggregate(Aggregates.MAX_INT.invoke(), listOf(IntValue(null), IntValue(0), IntValue(1), IntValue(2)), 2)
-        testAggregate(Aggregates.MAX_INT.invoke(), listOf(IntValue(null), IntValue(-1), IntValue(1), IntValue(2)), 2)
-        testAggregate(Aggregates.MAX_INT.invoke(), listOf(IntValue(null)), null)
-        testAggregate(Aggregates.MAX_INT.invoke(), listOf(IntValue(-2), IntValue(-1), IntValue(null)), -1)
+        testAggregate(Aggregates.MAX_INT.invoke(), listOf(LongValue(null), LongValue(0), LongValue(1), LongValue(2)), 2L)
+        testAggregate(Aggregates.MAX_INT.invoke(), listOf(LongValue(null), LongValue(-1), LongValue(1), LongValue(2)), 2L)
+        testAggregate(Aggregates.MAX_INT.invoke(), listOf(LongValue(null)), null)
+        testAggregate(Aggregates.MAX_INT.invoke(), listOf(LongValue(-2), LongValue(-1), LongValue(null)), -1L)
     }
 
     @Test
     fun testMinFloat() {
-        testAggregate(Aggregates.MIN_FLOAT.invoke(), listOf(FloatValue(null), FloatValue(0f), FloatValue(1.2f), FloatValue(2.8f)), 0f)
-        testAggregate(Aggregates.MIN_FLOAT.invoke(), listOf(FloatValue(null), FloatValue(-1.8f), FloatValue(-1.9f), FloatValue(-2.2f)), -2.2f)
-        testAggregate(Aggregates.MIN_FLOAT.invoke(), listOf(FloatValue(null)), null)
+        testAggregate(Aggregates.MIN_FLOAT.invoke(), listOf(DoubleValue(null), DoubleValue(0.0), DoubleValue(1.2), DoubleValue(2.8)), 0.0)
+        testAggregate(Aggregates.MIN_FLOAT.invoke(), listOf(DoubleValue(null), DoubleValue(-1.8), DoubleValue(-1.9), DoubleValue(-2.2)), -2.2)
+        testAggregate(Aggregates.MIN_FLOAT.invoke(), listOf(DoubleValue(null)), null)
     }
 
     @Test
     fun testMaxFloat() {
-        testAggregate(Aggregates.MAX_FLOAT.invoke(), listOf(FloatValue(null), FloatValue(0f), FloatValue(1.2f), FloatValue(2.8f)), 2.8f)
-        testAggregate(Aggregates.MAX_FLOAT.invoke(), listOf(FloatValue(null), FloatValue(-1.8f), FloatValue(-1.9f), FloatValue(-2.2f)), -1.8f)
-        testAggregate(Aggregates.MAX_FLOAT.invoke(), listOf(FloatValue(null)), null)
-        testAggregate(Aggregates.MAX_FLOAT.invoke(), listOf(FloatValue(-2f), FloatValue(-1f), FloatValue(null)), -1f)
+        testAggregate(Aggregates.MAX_FLOAT.invoke(), listOf(DoubleValue(null), DoubleValue(0.0), DoubleValue(1.2), DoubleValue(2.8)), 2.8)
+        testAggregate(Aggregates.MAX_FLOAT.invoke(), listOf(DoubleValue(null), DoubleValue(-1.8), DoubleValue(-1.9), DoubleValue(-2.2)), -1.8)
+        testAggregate(Aggregates.MAX_FLOAT.invoke(), listOf(DoubleValue(null)), null)
+        testAggregate(Aggregates.MAX_FLOAT.invoke(), listOf(DoubleValue(-2.0), DoubleValue(-1.0), DoubleValue(null)), -1.0)
     }
 
     @Test

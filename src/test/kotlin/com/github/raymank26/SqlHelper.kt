@@ -14,8 +14,8 @@ private val sqlExecutor = SqlExecutor()
 
 private val columnInfos = listOf(
         ColumnInfo(FieldType.STRING, "a"),
-        ColumnInfo(FieldType.INTEGER, "b"),
-        ColumnInfo(FieldType.FLOAT, "c")
+        ColumnInfo(FieldType.LONG, "b"),
+        ColumnInfo(FieldType.DOUBLE, "c")
 )
 val datasetRows = createDataset(listOf(
         listOf("foobar", "1", "3.0"),

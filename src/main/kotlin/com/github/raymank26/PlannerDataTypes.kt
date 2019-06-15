@@ -12,8 +12,8 @@ object CsvInput : ScanSource()
 data class IndexInput(val name: String) : ScanSource()
 
 enum class FieldType(val mark: Byte) {
-    INTEGER(1),
-    FLOAT(2),
+    LONG(1),
+    DOUBLE(2),
     STRING(3)
     ;
 
@@ -89,16 +89,16 @@ interface SqlValueAtom : Comparable<SqlValueAtom> {
     fun toText(): String
 }
 
-private fun SqlValueAtom.asInt(): Int {
+private fun SqlValueAtom.asLong(): Long {
     val v = asValue
     requireNotNull(v)
-    return v as? Int ?: throw RuntimeException("Value of type ${v.javaClass} is not Int")
+    return v as? Long ?: throw RuntimeException("Value of type ${v.javaClass} is not Int")
 }
 
-private fun SqlValueAtom.asFloat(): Float {
+private fun SqlValueAtom.asDouble(): Double {
     val v = asValue
     requireNotNull(v)
-    return v as? Float ?: throw RuntimeException("Value of type ${v.javaClass} is not Float")
+    return v as? Double ?: throw RuntimeException("Value of type ${v.javaClass} is not Float")
 }
 
 private fun SqlValueAtom.asString(): String {
@@ -113,8 +113,8 @@ infix fun SqlValueAtom.plus(other: SqlValueAtom): SqlValueAtom {
     return when {
         asValue != null && other.asValue == null -> this
         asValue == null -> other
-        type == FieldType.INTEGER -> IntValue(asInt() + other.asInt())
-        type == FieldType.FLOAT -> FloatValue(asFloat() + other.asFloat())
+        type == FieldType.LONG -> LongValue(asLong() + other.asLong())
+        type == FieldType.DOUBLE -> DoubleValue(asDouble() + other.asDouble())
         type == FieldType.STRING -> StringValue(asString() + other.asString())
         else -> throw IllegalStateException("Case is not handled")
     }
@@ -123,8 +123,8 @@ infix fun SqlValueAtom.plus(other: SqlValueAtom): SqlValueAtom {
 infix fun SqlValueAtom.lt(other: SqlValueAtom): Boolean {
     return when {
         asValue == null || other.asValue == null -> false
-        type == FieldType.INTEGER -> asInt() < other.asInt()
-        type == FieldType.FLOAT -> asFloat() < other.asFloat()
+        type == FieldType.LONG -> asLong() < other.asLong()
+        type == FieldType.DOUBLE -> asDouble() < other.asDouble()
         type == FieldType.STRING -> asString() < other.asString()
         else -> throw IllegalStateException("Case is not handled")
     }
@@ -133,8 +133,8 @@ infix fun SqlValueAtom.lt(other: SqlValueAtom): Boolean {
 infix fun SqlValueAtom.lte(other: SqlValueAtom): Boolean {
     return when {
         asValue == null || other.asValue == null -> false
-        type == FieldType.INTEGER -> asInt() <= other.asInt()
-        type == FieldType.FLOAT -> asFloat() <= other.asFloat()
+        type == FieldType.LONG -> asLong() <= other.asLong()
+        type == FieldType.DOUBLE -> asDouble() <= other.asDouble()
         type == FieldType.STRING -> asString() <= other.asString()
         else -> throw IllegalStateException("Case is not handled")
     }
@@ -143,8 +143,8 @@ infix fun SqlValueAtom.lte(other: SqlValueAtom): Boolean {
 infix fun SqlValueAtom.gt(other: SqlValueAtom): Boolean {
     return when {
         asValue == null || other.asValue == null -> false
-        type == FieldType.INTEGER -> asInt() > other.asInt()
-        type == FieldType.FLOAT -> asFloat() > other.asFloat()
+        type == FieldType.LONG -> asLong() > other.asLong()
+        type == FieldType.DOUBLE -> asDouble() > other.asDouble()
         type == FieldType.STRING -> asString() > other.asString()
         else -> throw IllegalStateException("Case is not handled")
     }
@@ -153,8 +153,8 @@ infix fun SqlValueAtom.gt(other: SqlValueAtom): Boolean {
 infix fun SqlValueAtom.gte(other: SqlValueAtom): Boolean {
     return when {
         asValue == null || other.asValue == null -> false
-        type == FieldType.INTEGER -> asInt() >= other.asInt()
-        type == FieldType.FLOAT -> asFloat() >= other.asFloat()
+        type == FieldType.LONG -> asLong() >= other.asLong()
+        type == FieldType.DOUBLE -> asDouble() >= other.asDouble()
         type == FieldType.STRING -> asString() >= other.asString()
         else -> throw IllegalStateException("Case is not handled")
     }
@@ -164,8 +164,8 @@ fun SqlValueAtom.max(other: SqlValueAtom): SqlValueAtom {
     return when {
         asValue != null && other.asValue == null -> this
         asValue == null -> other
-        type == FieldType.INTEGER -> IntValue(Math.max(asInt(), other.asInt()))
-        type == FieldType.FLOAT -> FloatValue(Math.max(asFloat(), other.asFloat()))
+        type == FieldType.LONG -> LongValue(Math.max(asLong(), other.asLong()))
+        type == FieldType.DOUBLE -> DoubleValue(Math.max(asDouble(), other.asDouble()))
         type == FieldType.STRING -> if (asString() > other.asString()) this else other
         else -> throw IllegalStateException("Case is not handled")
     }
@@ -175,8 +175,8 @@ fun SqlValueAtom.min(other: SqlValueAtom): SqlValueAtom {
     return when {
         asValue != null && other.asValue == null -> this
         asValue == null -> other
-        type == FieldType.INTEGER -> IntValue(Math.min(asInt(), other.asInt()))
-        type == FieldType.FLOAT -> FloatValue(Math.min(asFloat(), other.asFloat()))
+        type == FieldType.LONG -> LongValue(Math.min(asLong(), other.asLong()))
+        type == FieldType.DOUBLE -> DoubleValue(Math.min(asDouble(), other.asDouble()))
         type == FieldType.STRING -> if (asString() < other.asString()) this else other
         else -> throw IllegalStateException("Case is not handled")
     }
@@ -194,12 +194,12 @@ sealed class SqlValue
 
 data class RefValue(val name: String) : SqlValue()
 
-data class IntValue(val value: Int?) : SqlValue(), SqlValueAtom {
-    override val type: FieldType = FieldType.INTEGER
+data class LongValue(val value: Long?) : SqlValue(), SqlValueAtom {
+    override val type: FieldType = FieldType.LONG
     override val asValue: Any? = value
 
     override fun compareTo(other: SqlValueAtom): Int {
-        return compareNullable(this, other) { it.asInt() }
+        return compareNullable(this, other) { it.asLong() }
     }
 
     override fun toText(): String {
@@ -207,12 +207,12 @@ data class IntValue(val value: Int?) : SqlValue(), SqlValueAtom {
     }
 }
 
-data class FloatValue(val value: Float?) : SqlValue(), SqlValueAtom {
-    override val type: FieldType = FieldType.FLOAT
+data class DoubleValue(val value: Double?) : SqlValue(), SqlValueAtom {
+    override val type: FieldType = FieldType.DOUBLE
     override val asValue: Any? = value
 
     override fun compareTo(other: SqlValueAtom): Int {
-        return compareNullable(this, other) { it.asFloat() }
+        return compareNullable(this, other) { it.asDouble() }
     }
 
     override fun toText(): String {

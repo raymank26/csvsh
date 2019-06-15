@@ -71,7 +71,7 @@ class CsvReaderTest {
         val metadataProvider = DatasetMetadataProvider(fileSystem, dataProvider, indexesManager)
         val metadata = metadataProvider.getOrCreate(dataPath)
         println(fileSystem.outputMapping[Paths.get("/path/content.meta")])
-        assertEquals(listOf(ColumnInfo(FieldType.STRING, "a"), ColumnInfo(FieldType.INTEGER, "b"), ColumnInfo(FieldType.FLOAT, "c")),
+        assertEquals(listOf(ColumnInfo(FieldType.STRING, "a"), ColumnInfo(FieldType.LONG, "b"), ColumnInfo(FieldType.DOUBLE, "c")),
                 metadata.columnInfos)
     }
 

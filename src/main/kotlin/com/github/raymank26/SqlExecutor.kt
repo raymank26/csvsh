@@ -165,14 +165,14 @@ class SqlExecutor {
 }
 
 val AGGREGATES_MAPPING: Map<Pair<String, FieldType>, AggregateFunctionFactory> = mapOf(
-        Pair(Pair("min", FieldType.INTEGER), Aggregates.MIN_INT),
-        Pair(Pair("min", FieldType.FLOAT), Aggregates.MIN_FLOAT),
-        Pair(Pair("max", FieldType.INTEGER), Aggregates.MAX_INT),
-        Pair(Pair("max", FieldType.FLOAT), Aggregates.MAX_FLOAT),
-        Pair(Pair("sum", FieldType.INTEGER), Aggregates.SUM_INT),
-        Pair(Pair("sum", FieldType.FLOAT), Aggregates.SUM_FLOAT),
-        Pair(Pair("count", FieldType.INTEGER), Aggregates.COUNT_ANY),
-        Pair(Pair("count", FieldType.FLOAT), Aggregates.COUNT_ANY),
+        Pair(Pair("min", FieldType.LONG), Aggregates.MIN_INT),
+        Pair(Pair("min", FieldType.DOUBLE), Aggregates.MIN_FLOAT),
+        Pair(Pair("max", FieldType.LONG), Aggregates.MAX_INT),
+        Pair(Pair("max", FieldType.DOUBLE), Aggregates.MAX_FLOAT),
+        Pair(Pair("sum", FieldType.LONG), Aggregates.SUM_INT),
+        Pair(Pair("sum", FieldType.DOUBLE), Aggregates.SUM_FLOAT),
+        Pair(Pair("count", FieldType.LONG), Aggregates.COUNT_ANY),
+        Pair(Pair("count", FieldType.DOUBLE), Aggregates.COUNT_ANY),
         Pair(Pair("count", FieldType.STRING), Aggregates.COUNT_ANY)
 )
 

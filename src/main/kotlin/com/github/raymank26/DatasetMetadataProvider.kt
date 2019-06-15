@@ -99,7 +99,7 @@ class DatasetMetadataProvider(private val fileSystem: FileSystem,
         return when {
             prevType == null -> nextType
             prevType == FieldType.STRING || nextType == FieldType.STRING -> FieldType.STRING
-            prevType == FieldType.INTEGER && nextType == FieldType.FLOAT -> FieldType.FLOAT
+            prevType == FieldType.LONG && nextType == FieldType.DOUBLE -> FieldType.DOUBLE
             else -> nextType
         }
     }
@@ -107,8 +107,8 @@ class DatasetMetadataProvider(private val fileSystem: FileSystem,
     private fun guessColumnInfo(value: String?): FieldType? {
         return when {
             value == null -> null
-            value.contains('.') && value.toFloatOrNull() != null -> FieldType.FLOAT
-            value.toIntOrNull() != null -> FieldType.INTEGER
+            value.contains('.') && value.toFloatOrNull() != null -> FieldType.DOUBLE
+            value.toLongOrNull() != null -> FieldType.LONG
             else -> FieldType.STRING
         }
     }
