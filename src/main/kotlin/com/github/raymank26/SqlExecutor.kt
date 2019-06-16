@@ -209,8 +209,7 @@ private class DatasetIndexOffsetCollector(indexes: List<IndexDescriptionAndPath>
         if (atom.leftVal !is RefValue) {
             throw IllegalStateException("Left value is expected to be reference")
         }
-        val index = indexesMap[atom.leftVal.name]?.indexContent ?: return null
-
+        val index = indexesMap[atom.leftVal.name]?.indexContent?.value ?: return null
         val right = atom.rightVal
         val op = atom.operator
 

@@ -7,7 +7,7 @@ import kotlin.test.assertNull
 /**
  * Date: 2019-05-13.
  */
-class SqlPlannerTest : SqlTestUtils {
+class SqlPlannerTest : SqlTestUtils() {
 
     @Test
     fun testWhereEmpty() {

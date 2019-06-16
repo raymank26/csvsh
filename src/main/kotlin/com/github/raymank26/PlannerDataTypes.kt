@@ -5,7 +5,7 @@ package com.github.raymank26
  */
 data class IndexDescription(val name: String, val fieldName: String)
 
-data class IndexDescriptionAndPath(val description: IndexDescription, val indexContent: ReadOnlyIndex)
+data class IndexDescriptionAndPath(val description: IndexDescription, val indexContent: Lazy<ReadOnlyIndex>)
 
 enum class FieldType(val mark: Byte) {
     LONG(1),

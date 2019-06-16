@@ -4,6 +4,7 @@ import com.github.raymank26.file.FileSystem
 import com.github.raymank26.file.getFilenameWithoutExtension
 import com.google.common.collect.ImmutableMap
 import org.mapdb.BTreeMap
+import org.mapdb.DB
 import org.mapdb.Serializer
 import org.mapdb.serializer.GroupSerializer
 import java.nio.file.Path
@@ -25,16 +26,25 @@ class IndexesManager(private val fileSystem: FileSystem) {
             return emptyList()
         }
         return fileSystem.getDB(indexFile).use { db ->
+            var readDb: DB? = null
             val result = mutableListOf<IndexDescriptionAndPath>()
             for (name in db.getAllNames()) {
                 val (indexName, fieldName, fieldTypeMark) = name.split("|")
 
                 val byteMark = fieldTypeMark.toByte()
                 val serializer = requireNotNull(MAPDB_SERIALIZERS[FieldType.MARK_TO_FIELD_TYPE[byteMark]])
-                val tm = db.treeMap(name, serializer, Serializer.INT_ARRAY).open()
-                @Suppress("UNCHECKED_CAST")
-                val readOnlyIndex = MapDBReadonlyIndex(tm as BTreeMap<in Any, LongArray>, FieldType.LONG)
-                result.add(IndexDescriptionAndPath(IndexDescription(indexName, fieldName), readOnlyIndex))
+                val dbReader = lazy {
+                    val newDb = if (readDb == null || readDb!!.isClosed()) {
+                        readDb = fileSystem.getDB(indexFile)
+                        readDb!!
+                    } else {
+                        readDb!!
+                    }
+                    val tm = newDb.treeMap(name, serializer, Serializer.INT_ARRAY).open()
+                    @Suppress("UNCHECKED_CAST")
+                    MapDBReadonlyIndex(tm as BTreeMap<in Any, LongArray>, FieldType.LONG)
+                }
+                result.add(IndexDescriptionAndPath(IndexDescription(indexName, fieldName), dbReader))
             }
             result
         }
@@ -55,22 +65,18 @@ class IndexesManager(private val fileSystem: FileSystem) {
                 .createOrOpen()
 
         indexContent.use {
-            indexContent.clear()
-            csvReader.getIterator().use { iterator ->
-                iterator.forEach { row ->
-                    val fieldValue: Any = row.getCell(fieldName).asValue ?: return@forEach
-                    requireNotNull(row.offset)
-                    indexContent.compute(fieldValue) { _: Any, positions: LongArray? ->
-                        if (positions == null) {
-                            LongArray(1).apply { this[0] = row.offset }
-                        } else {
-                            val newPositions = LongArray(positions.size + 1)
-                            System.arraycopy(positions, 0, newPositions, 0, positions.size)
-                            newPositions[positions.size] = row.offset
-                            newPositions
-                        }
+            csvReader.getIterator().forEach { row ->
+                val fieldValue: Any = row.getCell(fieldName).asValue ?: return@forEach
+                requireNotNull(row.offset)
+                indexContent.compute(fieldValue) { _: Any, positions: LongArray? ->
+                    if (positions == null) {
+                        LongArray(1).apply { this[0] = row.offset }
+                    } else {
+                        val newPositions = LongArray(positions.size + 1)
+                        System.arraycopy(positions, 0, newPositions, 0, positions.size)
+                        newPositions[positions.size] = row.offset
+                        newPositions
                     }
-
                 }
             }
         }

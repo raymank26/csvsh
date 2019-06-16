@@ -5,7 +5,7 @@ import org.junit.Test
 /**
  * Date: 2019-05-11.
  */
-class SqlGrammarTest : SqlTestUtils {
+class SqlGrammarTest : SqlTestUtils() {
 
     @Test
     fun testSimpleSelect() {

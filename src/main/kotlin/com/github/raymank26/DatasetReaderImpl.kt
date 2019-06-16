@@ -7,18 +7,26 @@ class DatasetReaderImpl(private val contentDataProvider: ContentDataProvider,
                         override val columnInfo: List<ColumnInfo>,
                         override val availableIndexes: List<IndexDescriptionAndPath>) : DatasetReader {
 
+    private val closeIndexes = AutoCloseable {
+        availableIndexes.forEach {
+            if (it.indexContent.isInitialized()) {
+                it.indexContent.value.close()
+            }
+        }
+    }
+
     override fun getIterator(): ClosableSequence<DatasetRow> {
         if (columnInfo.isEmpty()) {
-            return ClosableSequence(emptySequence(), null)
+            return ClosableSequence<DatasetRow>(emptySequence(), null).withClosable(closeIndexes)
         }
-        return contentDataProvider.get(readerFactory()).transform(toRows())
+        return contentDataProvider.get(readerFactory()).transform(toRows()).withClosable(closeIndexes)
     }
 
     override fun getIterator(offsets: List<Long>): ClosableSequence<DatasetRow> {
         if (columnInfo.isEmpty()) {
-            return ClosableSequence(emptySequence(), null)
+            return ClosableSequence<DatasetRow>(emptySequence(), null).withClosable(closeIndexes)
         }
-        return contentDataProvider.get(readerFactory(), offsets).transform(toRows())
+        return contentDataProvider.get(readerFactory(), offsets).transform(toRows()).withClosable(closeIndexes)
     }
 
     private fun toRows(): (Sequence<ContentRow>) -> Sequence<DatasetRow> {

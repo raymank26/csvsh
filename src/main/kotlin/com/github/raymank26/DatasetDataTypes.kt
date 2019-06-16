@@ -84,6 +84,13 @@ class ClosableSequence<T>(private val sequence: Sequence<T>, private val resourc
         return ClosableSequence(f(sequence), resource)
     }
 
+    fun withClosable(closable: AutoCloseable): ClosableSequence<T> {
+        return ClosableSequence(sequence, AutoCloseable {
+            closable.close()
+            resource?.close()
+        })
+    }
+
     fun <U> map(f: (T) -> U): ClosableSequence<U> {
         return transform { it.map(f) }
     }

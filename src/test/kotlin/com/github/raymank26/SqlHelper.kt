@@ -1,6 +1,8 @@
 package com.github.raymank26
 
 import org.apache.commons.csv.CSVFormat
+import org.junit.After
+import java.nio.file.Files
 import java.nio.file.Paths
 import kotlin.test.assertEquals
 import kotlin.test.fail
@@ -23,15 +25,17 @@ private val testInput = """
     foobarbaz,2,-1
 """.trimIndent()
 
-private val dataPath = Paths.get("/test/input.csv")
-private val fileSystem = InMemoryFileSystem(mapOf(Pair(dataPath, testInput)))
-val dataProvider = CsvContentDataProvider(CSVFormat.RFC4180.withNullString("null"))
+val dataPath = Paths.get("/test/input.csv")
+val indexPath = Paths.get("/test/input.index")
+val realIndexFilePath = Paths.get("/tmp/csvTmpIndex.tmp")
+val fileSystem = InMemoryFileSystem(mapOf(Pair(dataPath, testInput)), mapOf(Pair(indexPath, realIndexFilePath)))
 
+val dataProvider = CsvContentDataProvider(CSVFormat.RFC4180.withNullString("null"))
 val indexesManager = IndexesManager(fileSystem)
 val metadataProvider = DatasetMetadataProvider(fileSystem, dataProvider, indexesManager)
 val readerFactory = FilesystemDatasetReaderFactory(metadataProvider, fileSystem, dataProvider)
 
-interface SqlTestUtils {
+abstract class SqlTestUtils {
 
     fun getDefaultDatasetFactory(): DatasetReaderFactory {
         return readerFactory
@@ -58,6 +62,13 @@ interface SqlTestUtils {
             if (exceptionClazz != null) {
                 assertEquals(exceptionClazz, e.javaClass)
             }
+        }
+    }
+
+    @After
+    fun deleteRealFile() {
+        if (Files.exists(realIndexFilePath)) {
+            Files.delete(realIndexFilePath)
         }
     }
 }
