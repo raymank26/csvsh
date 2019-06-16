@@ -1,7 +1,7 @@
 package com.github.raymank26
 
-import java.util.NavigableMap
-import java.util.TreeMap
+import org.apache.commons.csv.CSVFormat
+import java.nio.file.Paths
 import kotlin.test.assertEquals
 import kotlin.test.fail
 
@@ -12,68 +12,29 @@ private val sqlAstBuilder = SqlAstBuilder()
 private val sqlPlanner = SqlPlanner()
 private val sqlExecutor = SqlExecutor()
 
-private val columnInfos = listOf(
-        ColumnInfo(FieldType.STRING, "a"),
-        ColumnInfo(FieldType.LONG, "b"),
-        ColumnInfo(FieldType.DOUBLE, "c")
-)
-val datasetRows = createDataset(listOf(
-        listOf("foobar", "1", "3.0"),
-        listOf("bazz", null, "-1.0"),
-        listOf(null, "10", "3.4"),
-        listOf(null, "-5", "8.2"),
-        listOf("baz", "11", null),
-        listOf("bazz", "2", "-1"),
-        listOf("foobarbaz", "2", "-1")
-), columnInfos)
+private val testInput = """
+    a,b,c
+    foobar,1,3.0
+    bazz,null,-1.0
+    null,10,3.4
+    null,-5,8.2
+    baz,11,null
+    bazz,2,-1
+    foobarbaz,2,-1
+""".trimIndent()
 
-private val availableIndexes = listOf(
-        createIndex(datasetRows, IndexDescription(name = "aIndex", fieldName = "a")),
-        createIndex(datasetRows, IndexDescription(name = "bIndex", fieldName = "b"))
-)
+private val dataPath = Paths.get("/test/input.csv")
+private val fileSystem = InMemoryFileSystem(mapOf(Pair(dataPath, testInput)))
+private val dataProvider = CsvContentDataProvider(CSVFormat.RFC4180.withNullString("null"))
 
-private val datasetReader = InMemoryDatasetReader(
-        columnInfo = columnInfos,
-        datasetRows = datasetRows,
-        availableIndexes = availableIndexes
-)
-
-private val datasetFactory = InMemoryDatasetFactory(datasetReader)
-
-fun createDataset(listOf: List<List<String?>>, columnInfo: List<ColumnInfo>): List<DatasetRow> {
-    return listOf.mapIndexed { rowNum, columns ->
-        val sqlColumns = columns.mapIndexed { i, column ->
-            createSqlAtom(column, columnInfo[i].type)
-        }
-        return@mapIndexed DatasetRow(rowNum, sqlColumns, columnInfo)
-    }
-}
-
-private fun createIndex(rows: List<DatasetRow>, indexDescription: IndexDescription): IndexDescriptionAndPath {
-    if (rows.isEmpty()) {
-        throw RuntimeException("Empty rows passed")
-    }
-    val index = TreeMap<Any, MutableList<Int>>()
-    for (row in rows) {
-        val key = row.getCell(indexDescription.fieldName).asValue ?: continue
-        index.compute(key) { _, prev ->
-            if (prev == null) {
-                mutableListOf(row.rowNum)
-            } else {
-                prev.add(row.rowNum)
-                prev
-            }
-        }
-    }
-    val fieldType = rows.first().getCellType(indexDescription.fieldName)
-    @Suppress("UNCHECKED_CAST")
-    return IndexDescriptionAndPath(indexDescription, InMemoryIndex(fieldType, index as NavigableMap<Any, List<Int>>))
-}
+val indexesManager = IndexesManager(fileSystem)
+val metadataProvider = DatasetMetadataProvider(fileSystem, dataProvider, indexesManager)
+val readerFactory = FilesystemDatasetReaderFactory(metadataProvider, fileSystem, dataProvider)
 
 interface SqlTestUtils {
 
     fun getDefaultDatasetFactory(): DatasetReaderFactory {
-        return datasetFactory
+        return readerFactory
     }
 
     fun testParser(statement: String) {

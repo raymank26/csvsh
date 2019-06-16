@@ -33,7 +33,7 @@ class IndexesManager(private val fileSystem: FileSystem) {
                 val serializer = requireNotNull(MAPDB_SERIALIZERS[FieldType.MARK_TO_FIELD_TYPE[byteMark]])
                 val tm = db.treeMap(name, serializer, Serializer.INT_ARRAY).open()
                 @Suppress("UNCHECKED_CAST")
-                val readOnlyIndex = MapDBReadonlyIndex(tm as BTreeMap<in Any, IntArray>, FieldType.LONG)
+                val readOnlyIndex = MapDBReadonlyIndex(tm as BTreeMap<in Any, LongArray>, FieldType.LONG)
                 result.add(IndexDescriptionAndPath(IndexDescription(indexName, fieldName), readOnlyIndex))
             }
             result
@@ -50,8 +50,8 @@ class IndexesManager(private val fileSystem: FileSystem) {
 
         val keySerializer: GroupSerializer<*> = MAPDB_SERIALIZERS[columnInfo.type] ?: throw IllegalStateException()
         @Suppress("UNCHECKED_CAST")
-        val indexContent: BTreeMap<Any, IntArray> = fileSystem.getDB(indexFile)
-                .treeMap("$indexName|$fieldName|${columnInfo.type.mark}", keySerializer as GroupSerializer<Any>, Serializer.INT_ARRAY)
+        val indexContent: BTreeMap<Any, LongArray> = fileSystem.getDB(indexFile)
+                .treeMap("$indexName|$fieldName|${columnInfo.type.mark}", keySerializer as GroupSerializer<Any>, Serializer.LONG_ARRAY)
                 .createOrOpen()
 
         indexContent.use {
@@ -59,13 +59,14 @@ class IndexesManager(private val fileSystem: FileSystem) {
             csvReader.getIterator().use { iterator ->
                 iterator.forEach { row ->
                     val fieldValue: Any = row.getCell(fieldName).asValue ?: return@forEach
-                    indexContent.compute(fieldValue) { _: Any, positions: IntArray? ->
+                    requireNotNull(row.offset)
+                    indexContent.compute(fieldValue) { _: Any, positions: LongArray? ->
                         if (positions == null) {
-                            IntArray(1).apply { this[0] = row.rowNum }
+                            LongArray(1).apply { this[0] = row.offset }
                         } else {
-                            val newPositions = IntArray(positions.size + 1)
+                            val newPositions = LongArray(positions.size + 1)
                             System.arraycopy(positions, 0, newPositions, 0, positions.size)
-                            newPositions[positions.size] = row.rowNum
+                            newPositions[positions.size] = row.offset
                             newPositions
                         }
                     }

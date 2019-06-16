@@ -30,17 +30,21 @@ class InMemoryFileSystem(private val contentMapping: Map<Path, String>, private 
     }
 
     override fun getNavigableReader(path: Path): NavigableReader {
-        return requireNotNull(contentMapping[path]?.let { ByteArrayFile(it.toByteArray()) }) { "Path doesn't exist, path = $path" }
+        return requireNotNull(getBytes(path)?.let { ByteArrayFile(it) }) { "Path doesn't exist, path = $path" }
     }
 
     override fun getInputStream(path: Path): InputStream {
-        return requireNotNull(contentMapping[path]?.let { ByteArrayInputStream(it.toByteArray()) }) { "Path doesn't exist, path = $path" }
+        return requireNotNull(getBytes(path)?.let { ByteArrayInputStream(it) }) { "Path doesn't exist, path = $path" }
     }
 
     override fun getOutputStream(path: Path): OutputStream {
         return outputMapping.compute(path) { _, prev ->
             prev ?: ByteArrayOutputStream()
         }!!
+    }
+
+    private fun getBytes(path: Path): ByteArray? {
+        return contentMapping[path]?.toByteArray() ?: outputMapping[path]?.toByteArray()
     }
 }
 

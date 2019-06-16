@@ -25,7 +25,8 @@ data class DatasetResult(val rows: ClosableSequence<DatasetRow>, val columnInfo:
 
 data class DatasetRow(val rowNum: Int,
                       val columns: List<SqlValueAtom>,
-                      val columnInfo: List<ColumnInfo>) {
+                      val columnInfo: List<ColumnInfo>,
+                      val offset: Long?) {
 
     private val fieldNameToInfo: Map<String, Pair<ColumnInfo, Int>> = columnInfo.withIndex().associate {
         Pair(it.value.fieldName, Pair(it.value, it.index))

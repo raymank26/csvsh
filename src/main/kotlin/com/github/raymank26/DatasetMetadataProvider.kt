@@ -62,8 +62,8 @@ class DatasetMetadataProvider(private val fileSystem: FileSystem,
         return fileSystem.getNavigableReader(dataPath).use { handle ->
             val currentResult: MutableList<FieldType?> = headers.map { null }.toMutableList()
             dataReaderProvider.get(handle).use {
-                it.forEach { columns ->
-                    columns.withIndex().forEach { value ->
+                it.forEach { row ->
+                    row.columns.withIndex().forEach { value ->
                         currentResult[value.index] = nextFieldType(currentResult[value.index], value.value)
                     }
                 }
@@ -98,8 +98,10 @@ class DatasetMetadataProvider(private val fileSystem: FileSystem,
         val nextType = guessColumnInfo(nextValue)
         return when {
             prevType == null -> nextType
+            nextType == null -> prevType
             prevType == FieldType.STRING || nextType == FieldType.STRING -> FieldType.STRING
             prevType == FieldType.LONG && nextType == FieldType.DOUBLE -> FieldType.DOUBLE
+            prevType == FieldType.DOUBLE && nextType == FieldType.LONG -> FieldType.DOUBLE
             else -> nextType
         }
     }
@@ -116,40 +118,42 @@ class DatasetMetadataProvider(private val fileSystem: FileSystem,
 
 interface ContentDataProvider {
     fun header(reader: NavigableReader): List<String>
-    fun get(reader: NavigableReader): ClosableSequence<List<String?>>
-    fun get(reader: NavigableReader, offsets: List<Long>): ClosableSequence<List<String?>>
+    fun get(reader: NavigableReader): ClosableSequence<ContentRow>
+    fun get(reader: NavigableReader, offsets: List<Long>): ClosableSequence<ContentRow>
 }
+
+data class ContentRow(val columns: List<String?>, val offset: Long)
 
 class CsvContentDataProvider(private val csvFormat: CSVFormat) : ContentDataProvider {
     override fun header(reader: NavigableReader): List<String> {
         val firstRecord: CSVRecord = CSVParser(reader.asReader(), csvFormat).firstOrNull() ?: return emptyList()
-        val res = recordToColumns(firstRecord).filterNotNull()
+        val res = recordToRow(firstRecord).columns.filterNotNull()
         if (firstRecord.size() != res.size) {
             throw IllegalStateException("Header has nulls")
         }
         return res
     }
 
-    override fun get(reader: NavigableReader): ClosableSequence<List<String?>> {
+    override fun get(reader: NavigableReader): ClosableSequence<ContentRow> {
         val iterator = CSVParser(reader.asReader(), csvFormat).iterator()
         if (!iterator.hasNext()) {
             return ClosableSequence(emptySequence(), reader)
         }
         iterator.next()
-        return ClosableSequence(iterator.asSequence().map { recordToColumns(it) }, reader)
+        return ClosableSequence(iterator.asSequence().map { recordToRow(it) }, reader)
     }
 
-    override fun get(reader: NavigableReader, offsets: List<Long>): ClosableSequence<List<String?>> {
+    override fun get(reader: NavigableReader, offsets: List<Long>): ClosableSequence<ContentRow> {
         val rows = offsets.asSequence().mapIndexed { i, offset ->
             reader.seek(offset)
             val iterator = CSVParser(reader.asReader(), csvFormat, offset, i.toLong()).iterator()
-            recordToColumns(iterator.next())
+            recordToRow(iterator.next())
         }
         return ClosableSequence(rows, reader)
     }
 
-    private fun recordToColumns(record: CSVRecord): List<String?> {
-        return (0 until record.size()).map { record[it] }
+    private fun recordToRow(record: CSVRecord): ContentRow {
+        return ContentRow((0 until record.size()).map { record[it] }, record.characterPosition)
     }
 }
 

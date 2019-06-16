@@ -33,8 +33,8 @@ class CsvReaderTest {
         assertEquals(listOf("a", "b", "c"), header)
         val content = dataProvider.get(fileSystem.getNavigableReader(dataPath)).toList()
         assertEquals(3, content.size)
-        assertEquals(null, content[0][0])
-        assertEquals(null, content[1][1])
+        assertEquals(null, content[0].columns[0])
+        assertEquals(null, content[1].columns[1])
     }
 
     @Test
@@ -63,7 +63,7 @@ class CsvReaderTest {
         val dataPath = Paths.get("/path/content.csv")
         val fileSystem = InMemoryFileSystem(mapOf(Pair(dataPath, testInput)))
         val content: List<List<String?>?> = dataProvider.get(fileSystem.getNavigableReader(dataPath))
-                .map { it.plus("1") }
+                .map { it.columns.plus("1") }
                 .map { it.plus("2") }
                 .toList()
         assertEquals(listOf(null, "2", "3.0", "1", "2"), content[0])

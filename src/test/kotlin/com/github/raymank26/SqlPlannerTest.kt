@@ -11,14 +11,14 @@ class SqlPlannerTest : SqlTestUtils {
 
     @Test
     fun testWhereEmpty() {
-        val planDescription: SqlPlan = makePlan("SELECT * FROM 'a'")
+        val planDescription: SqlPlan = makePlan("SELECT * FROM '/test/input.csv'")
         assertNull(planDescription.wherePlanDescription)
     }
 
     @Test
     fun testWherePlan() {
         val planDescription: SqlPlan = makePlan(
-                "SELECT * FROM 'a' WHERE (5 > a AND (a > 2) AND b IN (1,2,3) OR c = 4)")
+                "SELECT * FROM '/test/input.csv' WHERE (5 > a AND (a > 2) AND b IN (1,2,3) OR c = 4)")
         val expectedExpr = ExpressionNode(
                 left = ExpressionNode(
                         left = ExpressionNode(
@@ -48,7 +48,7 @@ class SqlPlannerTest : SqlTestUtils {
     @Test
     fun testFullForm() {
         val planDescription: SqlPlan = makePlan(
-                "SELECT a,b, MAX(c) FROM './a' GROUP BY a,b WHERE a < 5 ORDER BY b DESC LIMIT 9", getDefaultDatasetFactory())
+                "SELECT a,b, MAX(c) FROM '/test/input.csv' GROUP BY a,b WHERE a < 5 ORDER BY b DESC LIMIT 9", getDefaultDatasetFactory())
         assertEquals(listOf("a", "b"), planDescription.groupByFields)
         assertEquals(OrderByPlanDescription(SelectFieldExpr("b"), true), planDescription.orderByPlanDescription)
         assertEquals(9, planDescription.limit)
@@ -57,17 +57,17 @@ class SqlPlannerTest : SqlTestUtils {
 
     @Test
     fun testGroupBy() {
-        makePlan("SELECT b,a,MAX(c) FROM './a' GROUP BY a,b")
+        makePlan("SELECT b,a,MAX(c) FROM '/test/input.csv' GROUP BY a,b")
     }
 
     @Test
     fun testGroupByFailure1() {
-        testPlannerFailure { makePlan("SELECT a,b,c FROM './a' GROUP BY a,b") }
+        testPlannerFailure { makePlan("SELECT a,b,c FROM '/test/input.csv' GROUP BY a,b") }
     }
 
     @Test
     fun testGroupByFailure2() {
-        testPlannerFailure { makePlan("SELECT * FROM './a' GROUP BY a") }
+        testPlannerFailure { makePlan("SELECT * FROM '/test/input.csv' GROUP BY a") }
     }
 
     private fun testPlannerFailure(r: () -> Unit) {

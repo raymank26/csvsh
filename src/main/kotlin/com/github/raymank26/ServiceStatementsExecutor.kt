@@ -31,7 +31,7 @@ class ServiceStatementsExecutor(private val datasetMetadataProvider: DatasetMeta
         val newColumnInfo = listOf(ColumnInfo(FieldType.STRING, "columnName"), ColumnInfo(FieldType.STRING, "columnType"))
         val rows = columnInfo
                 .asSequence()
-                .mapIndexed { i, it -> DatasetRow(i, listOf(StringValue(it.fieldName), StringValue(it.type.name)), newColumnInfo) }
+                .mapIndexed { i, it -> DatasetRow(i, listOf(StringValue(it.fieldName), StringValue(it.type.name)), newColumnInfo, null) }
         return DatasetResult(ClosableSequence(rows, null), newColumnInfo)
     }
 }

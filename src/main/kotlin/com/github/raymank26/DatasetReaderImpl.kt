@@ -21,10 +21,10 @@ class DatasetReaderImpl(private val contentDataProvider: ContentDataProvider,
         return contentDataProvider.get(readerFactory(), offsets).transform(toRows())
     }
 
-    private fun toRows(): (Sequence<List<String?>>) -> Sequence<DatasetRow> {
+    private fun toRows(): (Sequence<ContentRow>) -> Sequence<DatasetRow> {
         return { seq ->
-            seq.mapIndexed { i, columns ->
-                DatasetRow(i, columnInfo.mapIndexed { j, col -> createSqlAtom(columns[j], col.type) }, columnInfo)
+            seq.mapIndexed { i, contentRow ->
+                DatasetRow(i, columnInfo.mapIndexed { j, col -> createSqlAtom(contentRow.columns[j], col.type) }, columnInfo, contentRow.offset)
             }
         }
     }

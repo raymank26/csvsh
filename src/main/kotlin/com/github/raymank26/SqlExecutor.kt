@@ -33,26 +33,26 @@ class SqlExecutor {
         })
     }
 
-    private fun evalOverIndex(sqlPlan: SqlPlan, indexName: String, expressions: List<ExpressionAtom>): Map<ExpressionAtom, Set<Int>> {
-        val index = requireNotNull(sqlPlan.datasetReader.availableIndexes.find { it.description.name == indexName }?.indexContent) { "Unable to find index for name = $indexName" }
-
-        val result = mutableMapOf<ExpressionAtom, Set<Int>>()
-        for (expression in expressions) {
-            val right = expression.rightVal
-            val op = expression.operator
-
-            result[expression] = when {
-                op == Operator.LESS_THAN && right is SqlValueAtom -> index.lessThan(right)
-                op == Operator.LESS_EQ_THAN && right is SqlValueAtom -> index.lessThanEq(right)
-                op == Operator.GREATER_THAN && right is SqlValueAtom -> index.moreThan(right)
-                op == Operator.GREATER_EQ_THAN && right is SqlValueAtom -> index.moreThanEq(right)
-                op == Operator.EQ && right is SqlValueAtom -> index.eq(right)
-                op == Operator.IN && right is ListValue -> index.inRange(right)
-                else -> throw RuntimeException("Unable to exec op = $op")
-            }
-        }
-        return result
-    }
+//    private fun evalOverIndex(sqlPlan: SqlPlan, indexName: String, expressions: List<ExpressionAtom>): Map<ExpressionAtom, Set<Int>> {
+//        val index = requireNotNull(sqlPlan.datasetReader.availableIndexes.find { it.description.name == indexName }?.indexContent) { "Unable to find index for name = $indexName" }
+//
+//        val result = mutableMapOf<ExpressionAtom, Set<Int>>()
+//        for (expression in expressions) {
+//            val right = expression.rightVal
+//            val op = expression.operator
+//
+//            result[expression] = when {
+//                op == Operator.LESS_THAN && right is SqlValueAtom -> index.lessThan(right)
+//                op == Operator.LESS_EQ_THAN && right is SqlValueAtom -> index.lessThanEq(right)
+//                op == Operator.GREATER_THAN && right is SqlValueAtom -> index.moreThan(right)
+//                op == Operator.GREATER_EQ_THAN && right is SqlValueAtom -> index.moreThanEq(right)
+//                op == Operator.EQ && right is SqlValueAtom -> index.eq(right)
+//                op == Operator.IN && right is ListValue -> index.inRange(right)
+//                else -> throw RuntimeException("Unable to exec op = $op")
+//            }
+//        }
+//        return result
+//    }
 
     private fun readDataset(sqlPlan: SqlPlan): DatasetResult {
         val newSequence = sqlPlan.datasetReader.getIterator()
@@ -75,7 +75,7 @@ class SqlExecutor {
             for (allowedField in allowedFields) {
                 columns.add(row.getCell(allowedField))
             }
-            DatasetRow(row.rowNum, columns, newColumnInfo)
+            DatasetRow(row.rowNum, columns, newColumnInfo, row.offset)
         }
         return DatasetResult(newSequence, newColumnInfo)
     }
@@ -143,7 +143,7 @@ class SqlExecutor {
             for (agg in aggregates) {
                 columns.add(agg.getResult())
             }
-            newRows.add(DatasetRow(rowNum++, columns, newColumnInfo))
+            newRows.add(DatasetRow(rowNum++, columns, newColumnInfo, null))
         }
         return DatasetResult(ClosableSequence(newRows.asSequence()), newColumnInfo)
     }

@@ -3,43 +3,45 @@ package com.github.raymank26
 import org.mapdb.BTreeMap
 import java.util.NavigableMap
 
+typealias FoundOffsets = Set<Long>
+
 interface ReadOnlyIndex : AutoCloseable {
     val type: FieldType
 
-    fun moreThan(from: SqlValueAtom): Set<Int>
-    fun moreThanEq(fromInclusive: SqlValueAtom): Set<Int>
-    fun lessThan(to: SqlValueAtom): Set<Int>
-    fun lessThanEq(toInclusive: SqlValueAtom): Set<Int>
-    fun eq(value: SqlValueAtom): Set<Int>
-    fun inRange(list: ListValue): Set<Int>
+    fun moreThan(from: SqlValueAtom): FoundOffsets
+    fun moreThanEq(fromInclusive: SqlValueAtom): FoundOffsets
+    fun lessThan(to: SqlValueAtom): FoundOffsets
+    fun lessThanEq(toInclusive: SqlValueAtom): FoundOffsets
+    fun eq(value: SqlValueAtom): FoundOffsets
+    fun inRange(list: ListValue): FoundOffsets
 }
 
 class MapDBReadonlyIndex(
-        private val bTreeMap: BTreeMap<in Any, IntArray>,
+        private val bTreeMap: BTreeMap<in Any, LongArray>,
         override val type: FieldType) : ReadOnlyIndex {
 
-    override fun moreThan(from: SqlValueAtom): Set<Int> {
+    override fun moreThan(from: SqlValueAtom): FoundOffsets {
         return bTreeToBitSet(bTreeMap.tailMap(from.asValue, false))
     }
 
-    override fun moreThanEq(fromInclusive: SqlValueAtom): Set<Int> {
+    override fun moreThanEq(fromInclusive: SqlValueAtom): FoundOffsets {
         return bTreeToBitSet(bTreeMap.tailMap(fromInclusive.asValue, true))
     }
 
-    override fun lessThan(to: SqlValueAtom): Set<Int> {
+    override fun lessThan(to: SqlValueAtom): FoundOffsets {
         return bTreeToBitSet(bTreeMap.headMap(to.asValue, false))
     }
 
-    override fun lessThanEq(toInclusive: SqlValueAtom): Set<Int> {
+    override fun lessThanEq(toInclusive: SqlValueAtom): FoundOffsets {
         return bTreeToBitSet(bTreeMap.headMap(toInclusive.asValue, true))
     }
 
-    override fun eq(value: SqlValueAtom): Set<Int> {
+    override fun eq(value: SqlValueAtom): FoundOffsets {
         return bTreeMap[value.asValue]?.toSet() ?: emptySet()
     }
 
-    override fun inRange(list: ListValue): Set<Int> {
-        val bs = mutableSetOf<Int>()
+    override fun inRange(list: ListValue): FoundOffsets {
+        val bs = mutableSetOf<Long>()
         for (elem in list.value) {
             bTreeMap[elem.asValue]?.forEach { rowNum ->
                 bs.add(rowNum)
@@ -53,11 +55,11 @@ class MapDBReadonlyIndex(
     }
 }
 
-private fun bTreeToBitSet(bTree: NavigableMap<*, IntArray>): Set<Int> {
-    val bs = mutableSetOf<Int>()
-    for (indexInFile: IntArray in bTree.values) {
-        indexInFile.forEach { rowNum ->
-            bs.add(rowNum)
+private fun bTreeToBitSet(bTree: NavigableMap<*, LongArray>): FoundOffsets {
+    val bs = mutableSetOf<Long>()
+    for (indexInFile in bTree.values) {
+        indexInFile.forEach { offset ->
+            bs.add(offset)
         }
     }
     return bs
