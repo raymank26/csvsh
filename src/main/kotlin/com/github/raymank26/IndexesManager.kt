@@ -56,30 +56,21 @@ class IndexesManager(private val fileSystem: FileSystem) {
                 ?: throw PlannerException("No csv found for path = $dataPath")
         val fields: List<ColumnInfo> = csvReader.columnInfo
 
-        val columnInfo: ColumnInfo = fields.find { it.fieldName == fieldName }!!
+        val columnInfo: ColumnInfo = fields.find { it.fieldName == fieldName }
+                ?: throw ExecutorException("Unable to find fieldName = $fieldName in dataset with columns = $fields")
 
         val keySerializer: GroupSerializer<*> = MAPDB_SERIALIZERS[columnInfo.type] ?: throw IllegalStateException()
         @Suppress("UNCHECKED_CAST")
-        val indexContent: BTreeMap<Any, LongArray> = fileSystem.getDB(indexFile)
+        val indexContent: DB.TreeMapSink<Any, LongArray> = fileSystem.getDB(indexFile)
                 .treeMap("$indexName|$fieldName|${columnInfo.type.mark}", keySerializer as GroupSerializer<Any>, Serializer.LONG_ARRAY)
-                .createOrOpen()
+                .createFromSink()
 
-        indexContent.use {
-            csvReader.getIterator().forEach { row ->
-                val fieldValue: Any = row.getCell(fieldName).asValue ?: return@forEach
-                requireNotNull(row.offset)
-                indexContent.compute(fieldValue) { _: Any, positions: LongArray? ->
-                    if (positions == null) {
-                        LongArray(1).apply { this[0] = row.offset }
-                    } else {
-                        val newPositions = LongArray(positions.size + 1)
-                        System.arraycopy(positions, 0, newPositions, 0, positions.size)
-                        newPositions[positions.size] = row.offset
-                        newPositions
-                    }
+        csvReader.getIterator()
+                .transform { data -> data.groupBy { it.getCell(fieldName) }.asSequence().filter { it.key.asValue != null }.sortedBy { it.key } }
+                .forEach { entry ->
+                    indexContent.put(entry.key.asValue!!, entry.value.map { it.offset!! }.toLongArray())
                 }
-            }
-        }
+        indexContent.create().close()
     }
 
     private fun getIndexPath(dataPath: Path): Path {
