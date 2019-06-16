@@ -7,10 +7,6 @@ data class IndexDescription(val name: String, val fieldName: String)
 
 data class IndexDescriptionAndPath(val description: IndexDescription, val indexContent: ReadOnlyIndex)
 
-sealed class ScanSource
-object CsvInput : ScanSource()
-data class IndexInput(val name: String) : ScanSource()
-
 enum class FieldType(val mark: Byte) {
     LONG(1),
     DOUBLE(2),
@@ -44,40 +40,36 @@ enum class ExpressionOperator {
 }
 
 sealed class Expression {
-    abstract fun <T> accept(visitor: BaseExpressionVisitor<T>): T?
+    abstract fun <T> accept(visitor: BaseExpressionVisitor<T>): T
 }
 
 data class ExpressionAtom(val leftVal: SqlValue, val operator: Operator, val rightVal: SqlValue) : Expression() {
-    override fun <T> accept(visitor: BaseExpressionVisitor<T>): T? {
+    override fun <T> accept(visitor: BaseExpressionVisitor<T>): T {
         return visitor.visitAtom(this)
     }
 }
 
 data class ExpressionNode(val left: Expression, val operator: ExpressionOperator, val right: Expression) : Expression() {
-    override fun <T> accept(visitor: BaseExpressionVisitor<T>): T? {
+    override fun <T> accept(visitor: BaseExpressionVisitor<T>): T {
         return visitor.visitNode(this)
     }
 }
 
 open class BaseExpressionVisitor<T> {
 
-    fun visitExpression(tree: Expression): T? {
+    fun visitExpression(tree: Expression): T {
         return tree.accept(this)
     }
 
-    open fun visitAtom(atom: ExpressionAtom): T? {
-        return default()
+    open fun visitAtom(atom: ExpressionAtom): T {
+        return atom.accept(this)
     }
 
-    open fun visitNode(node: ExpressionNode): T? {
+    open fun visitNode(node: ExpressionNode): T {
         return combine(node.left.accept(this), node.right.accept(this))
     }
 
-    protected open fun default(): T? {
-        return null
-    }
-
-    protected open fun combine(left: T?, right: T?): T? {
+    protected open fun combine(left: T, right: T): T {
         return right
     }
 }

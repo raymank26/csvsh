@@ -29,33 +29,18 @@ class SqlExecutor {
 
     private fun applyWhere(sqlPlan: SqlPlan, dataset: DatasetResult): DatasetResult {
         return dataset.copy(rows = dataset.rows.filter { row ->
-            ExpressionTreeEvaluator(row).visitExpression(sqlPlan.wherePlanDescription!!.expressionTree) ?: true
+            DatasetRowExpressionCheck(row).visitExpression(sqlPlan.wherePlanDescription!!.expressionTree)
         })
     }
 
-//    private fun evalOverIndex(sqlPlan: SqlPlan, indexName: String, expressions: List<ExpressionAtom>): Map<ExpressionAtom, Set<Int>> {
-//        val index = requireNotNull(sqlPlan.datasetReader.availableIndexes.find { it.description.name == indexName }?.indexContent) { "Unable to find index for name = $indexName" }
-//
-//        val result = mutableMapOf<ExpressionAtom, Set<Int>>()
-//        for (expression in expressions) {
-//            val right = expression.rightVal
-//            val op = expression.operator
-//
-//            result[expression] = when {
-//                op == Operator.LESS_THAN && right is SqlValueAtom -> index.lessThan(right)
-//                op == Operator.LESS_EQ_THAN && right is SqlValueAtom -> index.lessThanEq(right)
-//                op == Operator.GREATER_THAN && right is SqlValueAtom -> index.moreThan(right)
-//                op == Operator.GREATER_EQ_THAN && right is SqlValueAtom -> index.moreThanEq(right)
-//                op == Operator.EQ && right is SqlValueAtom -> index.eq(right)
-//                op == Operator.IN && right is ListValue -> index.inRange(right)
-//                else -> throw RuntimeException("Unable to exec op = $op")
-//            }
-//        }
-//        return result
-//    }
-
     private fun readDataset(sqlPlan: SqlPlan): DatasetResult {
-        val newSequence = sqlPlan.datasetReader.getIterator()
+        val newSequence = if (sqlPlan.wherePlanDescription != null) {
+            val result = DatasetIndexOffsetCollector(sqlPlan.datasetReader.availableIndexes).visitExpression(sqlPlan.wherePlanDescription.expressionTree)
+            result?.invoke()?.let { sqlPlan.datasetReader.getIterator(it.sorted().toList()) }
+                    ?: sqlPlan.datasetReader.getIterator()
+        } else {
+            sqlPlan.datasetReader.getIterator()
+        }
         return DatasetResult(newSequence, sqlPlan.datasetReader.columnInfo)
     }
 
@@ -178,7 +163,7 @@ val AGGREGATES_MAPPING: Map<Pair<String, FieldType>, AggregateFunctionFactory> =
         Pair(Pair("count", FieldType.STRING), Aggregates.COUNT_ANY)
 )
 
-private class ExpressionTreeEvaluator(private val datasetRow: DatasetRow) : BaseExpressionVisitor<Boolean>() {
+private class DatasetRowExpressionCheck(private val datasetRow: DatasetRow) : BaseExpressionVisitor<Boolean>() {
     override fun visitAtom(atom: ExpressionAtom): Boolean {
         val fieldName = (atom.leftVal as RefValue).name
         val columnValue = datasetRow.getCell(fieldName)
@@ -212,5 +197,58 @@ private class ExpressionTreeEvaluator(private val datasetRow: DatasetRow) : Base
             }
         }
     }
+}
 
+typealias IndexEvaluator = () -> Set<Long>
+
+private class DatasetIndexOffsetCollector(indexes: List<IndexDescriptionAndPath>) : BaseExpressionVisitor<IndexEvaluator?>() {
+
+    private val indexesMap = indexes.associateBy { it.description.fieldName }
+
+    override fun visitAtom(atom: ExpressionAtom): IndexEvaluator? {
+        if (atom.leftVal !is RefValue) {
+            throw IllegalStateException("Left value is expected to be reference")
+        }
+        val index = indexesMap[atom.leftVal.name]?.indexContent ?: return null
+
+        val right = atom.rightVal
+        val op = atom.operator
+
+        return {
+            when {
+                op == Operator.LESS_THAN && right is SqlValueAtom -> index.lessThan(right)
+                op == Operator.LESS_EQ_THAN && right is SqlValueAtom -> index.lessThanEq(right)
+                op == Operator.GREATER_THAN && right is SqlValueAtom -> index.moreThan(right)
+                op == Operator.GREATER_EQ_THAN && right is SqlValueAtom -> index.moreThanEq(right)
+                op == Operator.EQ && right is SqlValueAtom -> index.eq(right)
+                op == Operator.IN && right is ListValue -> index.inRange(right)
+                else -> throw RuntimeException("Unable to exec op = $op")
+            }
+        }
+    }
+
+    override fun visitNode(node: ExpressionNode): IndexEvaluator? {
+        val leftResult: IndexEvaluator? = node.left.accept(this)
+        val rightResult: IndexEvaluator? = node.right.accept(this)
+
+        return when (node.operator) {
+            ExpressionOperator.AND -> when {
+                leftResult == null && rightResult != null -> rightResult
+                leftResult != null && rightResult == null -> leftResult
+                leftResult != null && rightResult != null -> {
+                    { leftResult.invoke().intersect(rightResult.invoke()) }
+                }
+                else -> null
+            }
+            ExpressionOperator.OR -> when {
+                leftResult == null && rightResult != null -> null
+                leftResult != null && rightResult == null -> null
+                leftResult != null && rightResult != null -> {
+                    val a: () -> Set<Long> = { leftResult.invoke().union(rightResult.invoke()) }
+                    a
+                }
+                else -> null
+            }
+        }
+    }
 }
