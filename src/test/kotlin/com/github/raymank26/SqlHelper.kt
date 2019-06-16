@@ -25,7 +25,7 @@ private val testInput = """
 
 private val dataPath = Paths.get("/test/input.csv")
 private val fileSystem = InMemoryFileSystem(mapOf(Pair(dataPath, testInput)))
-private val dataProvider = CsvContentDataProvider(CSVFormat.RFC4180.withNullString("null"))
+val dataProvider = CsvContentDataProvider(CSVFormat.RFC4180.withNullString("null"))
 
 val indexesManager = IndexesManager(fileSystem)
 val metadataProvider = DatasetMetadataProvider(fileSystem, dataProvider, indexesManager)

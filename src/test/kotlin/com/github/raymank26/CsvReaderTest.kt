@@ -1,6 +1,5 @@
 package com.github.raymank26
 
-import org.apache.commons.csv.CSVFormat
 import org.junit.After
 import org.junit.Before
 import org.junit.Test
@@ -22,8 +21,6 @@ class CsvReaderTest {
             baz,null,4.4
             on,8,-1.7
         """.trimIndent()
-
-    private val dataProvider = CsvContentDataProvider(CSVFormat.RFC4180.withNullString("null"))
 
     @Test
     fun testDatasetReader() {
