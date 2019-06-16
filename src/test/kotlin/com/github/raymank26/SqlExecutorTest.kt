@@ -11,18 +11,24 @@ class SqlExecutorTest : SqlTestUtils {
     @Test
     fun simple() {
         val dataset = executeSelect("SELECT a FROM '/test/input.csv' WHERE b = 1", getDefaultDatasetFactory())
-        assertEquals(1, dataset.rows.toList().size)
+        val datasetList = dataset.rows.toList()
+        assertEquals(1, datasetList.size)
+        println(prettifyDataset(dataset.copy(ClosableSequence(datasetList.asSequence()))))
     }
 
     @Test
     fun testLike() {
         val dataset = executeSelect("SELECT * FROM '/test/input.csv' WHERE a LIKE '%ba%' AND c < 3.2 AND b <= 2", getDefaultDatasetFactory())
-        println(prettifyDataset(dataset))
+        val datasetList = dataset.rows.toList()
+        assertEquals(3, datasetList.size)
+        println(prettifyDataset(dataset.copy(ClosableSequence(datasetList.asSequence()))))
     }
 
     @Test
     fun testGroupBy() {
         val dataset = executeSelect("SELECT a, SUM(b), MIN(b), MAX(b), COUNT(b), SUM(c) FROM '/test/input.csv' GROUP BY a ORDER BY SUM(b) DESC", getDefaultDatasetFactory())
-        println(prettifyDataset(dataset))
+        val datasetList = dataset.rows.toList()
+        assertEquals(5, datasetList.size)
+        println(prettifyDataset(dataset.copy(ClosableSequence(datasetList.asSequence()))))
     }
 }
