@@ -20,7 +20,7 @@ private val testInput = """
     bazz,null,-1.0
     null,10,3.4
     null,-5,8.2
-    baz,11,null
+    баз,11,null
     bazz,2,-1
     foobarbaz,2,-1
 """.trimIndent()
