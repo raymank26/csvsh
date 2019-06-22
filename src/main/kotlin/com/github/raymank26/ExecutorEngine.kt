@@ -33,7 +33,11 @@ class ExecutorEngine {
                 if (description == null) {
                     TextResponse("No data found")
                 } else {
-                    CompositeResponse(listOf(DatasetResponse(description.columns), DatasetResponse(description.sizeStatistics)))
+                    CompositeResponse(listOf(
+                            TextResponse("Columns:"),
+                            DatasetResponse(description.columns),
+                            TextResponse("Sizes:"),
+                            DatasetResponse(description.sizeStatistics)))
                 }
             }
             is SelectStatement -> {

@@ -33,16 +33,16 @@ class ServiceStatementsExecutor(private val datasetMetadataProvider: DatasetMeta
         return TableDescription(columnsDataset, sizeStat)
     }
 
-    private fun getAdditionalDataDescription(csvPath: Path): DatasetResult {
-        val indexFileSize: Long? = indexesManager.getIndexFileSize(csvPath)
-        val offsetsFileSize: Long? = indexesManager.getOffsetsFileSize(csvPath)
+    private fun getAdditionalDataDescription(dataPath: Path): DatasetResult {
+        val indexFileSize: Long? = indexesManager.getIndexFileSize(dataPath)
+        val offsetsFileSize: Long? = indexesManager.getOffsetsFileSize(dataPath)
         val columnInfo = listOf(ColumnInfo(FieldType.STRING, "file"), ColumnInfo(FieldType.DOUBLE, "Size in MB"))
         val rows = listOf(
                 Pair("index", indexFileSize),
                 Pair("offsets", offsetsFileSize)
         ).asSequence()
                 .filter { it.second != null }
-                .mapIndexed { i, value -> DatasetRow(i, listOf(StringValue(value.first), DoubleValue(value.second!!.toDouble() / 1024)), columnInfo, null) }
+                .mapIndexed { i, value -> DatasetRow(i, listOf(StringValue(value.first), DoubleValue(value.second!!.toDouble() / 1024 / 1024)), columnInfo, null) }
         return DatasetResult(ClosableSequence(rows, null), columnInfo)
     }
 
