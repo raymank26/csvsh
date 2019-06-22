@@ -30,7 +30,6 @@ class DatasetMetadataProvider(private val fileSystem: FileSystem,
         return createAndSaveMetadata(metadataPath, dataPath)
     }
 
-
     private fun getMetadataPath(dataPath: Path): Path {
         return dataPath.parent.resolve(getFilenameWithoutExtension(dataPath) + ".meta")
     }

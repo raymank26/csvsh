@@ -17,7 +17,6 @@ import java.nio.file.Path
  * Date: 2019-06-13.
  */
 class InMemoryFileSystem(private val contentMapping: Map<Path, String>, private val indexesMapping: Map<Path, Path>) : FileSystem {
-
     val outputMapping: MutableMap<Path, ByteArrayOutputStream> = mutableMapOf()
 
     constructor(contentMapping: Map<Path, String>) : this(contentMapping, emptyMap())
@@ -50,6 +49,10 @@ class InMemoryFileSystem(private val contentMapping: Map<Path, String>, private 
 
     private fun getBytes(path: Path): ByteArray? {
         return contentMapping[path]?.toByteArray() ?: outputMapping[path]?.toByteArray()
+    }
+
+    override fun getSize(path: Path): Long {
+        throw UnsupportedOperationException()
     }
 }
 

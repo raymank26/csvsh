@@ -56,7 +56,7 @@ private fun fieldNotFound(name: String): Nothing {
 interface DatasetReader {
     val columnInfo: List<ColumnInfo>
     val availableIndexes: List<IndexDescriptionAndPath>
-    val md5Hash: Md5Hash
+    val contentHash: Md5Hash
 
     fun getIterator(): ClosableSequence<DatasetRow>
 

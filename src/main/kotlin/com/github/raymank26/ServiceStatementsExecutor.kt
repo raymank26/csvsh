@@ -2,6 +2,7 @@ package com.github.raymank26
 
 import com.github.raymank26.file.FileSystem
 import com.github.raymank26.sql.SqlParser
+import java.nio.file.Path
 import java.nio.file.Paths
 
 /**
@@ -23,11 +24,29 @@ class ServiceStatementsExecutor(private val datasetMetadataProvider: DatasetMeta
         return FilesystemDatasetReaderFactory(datasetMetadataProvider, fileSystem, contentDataProvider)
     }
 
-    fun describeTable(ctx: SqlParser.DescribeContext, readerFactory: DatasetReaderFactory): DatasetResult {
-        val csvPath = Paths.get(ctx.table().IDENTIFIER_Q().text.drop(1).dropLast(1))
-        val reader = readerFactory.getReader(csvPath)
-                ?: return DatasetResult(ClosableSequence(emptySequence()), emptyList())
-        val columnInfo = reader.columnInfo
+    fun describeTable(ctx: SqlParser.DescribeContext, readerFactory: DatasetReaderFactory): TableDescription? {
+        val dataPath = Paths.get(ctx.table().IDENTIFIER_Q().text.drop(1).dropLast(1))
+        val reader = readerFactory.getReader(dataPath)
+                ?: return null
+        val columnsDataset = describeColumns(reader.columnInfo)
+        val sizeStat = getAdditionalDataDescription(dataPath)
+        return TableDescription(columnsDataset, sizeStat)
+    }
+
+    private fun getAdditionalDataDescription(csvPath: Path): DatasetResult {
+        val indexFileSize: Long? = indexesManager.getIndexFileSize(csvPath)
+        val offsetsFileSize: Long? = indexesManager.getOffsetsFileSize(csvPath)
+        val columnInfo = listOf(ColumnInfo(FieldType.STRING, "file"), ColumnInfo(FieldType.DOUBLE, "Size in MB"))
+        val rows = listOf(
+                Pair("index", indexFileSize),
+                Pair("offsets", offsetsFileSize)
+        ).asSequence()
+                .filter { it.second != null }
+                .mapIndexed { i, value -> DatasetRow(i, listOf(StringValue(value.first), DoubleValue(value.second!!.toDouble() / 1024)), columnInfo, null) }
+        return DatasetResult(ClosableSequence(rows, null), columnInfo)
+    }
+
+    private fun describeColumns(columnInfo: List<ColumnInfo>): DatasetResult {
         val newColumnInfo = listOf(ColumnInfo(FieldType.STRING, "columnName"), ColumnInfo(FieldType.STRING, "columnType"))
         val rows = columnInfo
                 .asSequence()

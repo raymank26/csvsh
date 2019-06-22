@@ -21,6 +21,8 @@ interface FileSystem {
 
     fun getOutputStream(path: Path): OutputStream
 
+    fun getSize(path: Path): Long
+
     fun getMd5(path: Path): Md5Hash {
         val hashing = Hashing.md5()
                 .newHasher()

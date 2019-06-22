@@ -30,7 +30,11 @@ class ExecutorEngine {
             }
             is DescribeTable -> {
                 val description = ssExecutor.describeTable(parsedStatement.ctx, datasetReaderFactory)
-                DatasetResponse(description)
+                if (description == null) {
+                    TextResponse("No data found")
+                } else {
+                    CompositeResponse(listOf(DatasetResponse(description.columns), DatasetResponse(description.sizeStatistics)))
+                }
             }
             is SelectStatement -> {
                 val planDescriptor = sqlPlanner.createPlan(parsedStatement.ctx, datasetReaderFactory)
@@ -46,6 +50,8 @@ sealed class ExecutorResponse
 data class TextResponse(val value: String) : ExecutorResponse()
 
 data class DatasetResponse(val value: DatasetResult) : ExecutorResponse()
+
+data class CompositeResponse(val parts: List<ExecutorResponse>) : ExecutorResponse()
 
 object VoidResponse : ExecutorResponse()
 

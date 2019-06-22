@@ -23,8 +23,8 @@ private val MAPDB_SERIALIZERS: Map<FieldType, GroupSerializer<*>> = ImmutableMap
  */
 class IndexesManager(private val fileSystem: FileSystem, private val offsetsBuilder: FileOffsetsBuilder) {
 
-    fun loadIndexes(csvPath: Path): List<IndexDescriptionAndPath> {
-        val indexFile: Path = getIndexPath(csvPath)
+    fun loadIndexes(dataPath: Path): List<IndexDescriptionAndPath> {
+        val indexFile: Path = getIndexPath(dataPath)
         if (!fileSystem.isFileExists(indexFile)) {
             return emptyList()
         }
@@ -53,11 +53,27 @@ class IndexesManager(private val fileSystem: FileSystem, private val offsetsBuil
         }
     }
 
+    fun getIndexFileSize(dataPath: Path): Long? {
+        val indexPath = getIndexPath(dataPath)
+        if (!fileSystem.isFileExists(indexPath)) {
+            return null
+        }
+        return fileSystem.getSize(indexPath)
+    }
+
+    fun getOffsetsFileSize(dataPath: Path): Long? {
+        val offsetsPath = getOffsetsPath(dataPath)
+        if (!fileSystem.isFileExists(offsetsPath)) {
+            return null
+        }
+        return fileSystem.getSize(offsetsPath)
+    }
+
     fun createIndex(dataPath: Path, indexName: String, fieldName: String, datasetReaderFactory: DatasetReaderFactory) {
         val indexFile = getIndexPath(dataPath)
-        val csvReader = datasetReaderFactory.getReader(dataPath)
-                ?: throw PlannerException("No csv found for path = $dataPath")
-        val fields: List<ColumnInfo> = csvReader.columnInfo
+        val dataReader = datasetReaderFactory.getReader(dataPath)
+                ?: throw PlannerException("No data found for path = $dataPath")
+        val fields: List<ColumnInfo> = dataReader.columnInfo
 
         val columnInfo: ColumnInfo = fields.find { it.fieldName == fieldName }
                 ?: throw ExecutorException("Unable to find fieldName = $fieldName in dataset with columns = $fields")
@@ -68,15 +84,15 @@ class IndexesManager(private val fileSystem: FileSystem, private val offsetsBuil
                 .treeMap("$indexName|$fieldName|${columnInfo.type.mark}", keySerializer as GroupSerializer<Any>, Serializer.LONG_ARRAY)
                 .createFromSink()
 
-        val offsetsPath = dataPath.parent.resolve(getFilenameWithoutExtension(dataPath) + ".offsets")
+        val offsetsPath = getOffsetsPath(dataPath)
 
-        var offsetsDB: HTreeMap<Long, Long>? = loadOffsets(offsetsPath, csvReader.md5Hash)
+        var offsetsDB: HTreeMap<Long, Long>? = loadOffsets(offsetsPath, dataReader.contentHash)
         if (offsetsDB == null) {
-            offsetsDB = persistOffsets(csvReader, offsetsPath)
+            offsetsDB = persistOffsets(dataReader, offsetsPath)
         }
 
         offsetsDB.use {
-            csvReader.getIterator()
+            dataReader.getIterator()
                     .transform { data -> data.groupBy { it.getCell(fieldName) }.asSequence().filter { it.key.asValue != null }.sortedBy { it.key } }
                     .forEach { entry ->
                         indexContent.put(entry.key.asValue!!, entry.value.map { offsetsDB[it.characterOffset!!]!! }.toLongArray())
@@ -84,6 +100,9 @@ class IndexesManager(private val fileSystem: FileSystem, private val offsetsBuil
             indexContent.create().close()
         }
     }
+
+    private fun getOffsetsPath(dataPath: Path) =
+            dataPath.parent.resolve(getFilenameWithoutExtension(dataPath) + ".offsets")
 
     private fun loadOffsets(offsetsPath: Path, dataContentMd5: Md5Hash): HTreeMap<Long, Long>? {
         if (!fileSystem.isFileExists(offsetsPath)) {
@@ -100,10 +119,10 @@ class IndexesManager(private val fileSystem: FileSystem, private val offsetsBuil
                 .open()
     }
 
-    private fun persistOffsets(csvReader: DatasetReader, offsetsPath: Path): HTreeMap<Long, Long> {
-        val offsets: List<DatasetOffset> = csvReader.getNavigableReader().use {
-            csvReader.getIterator()
-            offsetsBuilder.buildOffsets(it, csvReader.getIterator().map { it.characterOffset!! }.toList())
+    private fun persistOffsets(dataReader: DatasetReader, offsetsPath: Path): HTreeMap<Long, Long> {
+        val offsets: List<DatasetOffset> = dataReader.getNavigableReader().use {
+            dataReader.getIterator()
+            offsetsBuilder.buildOffsets(it, dataReader.getIterator().map { it.characterOffset!! }.toList())
         }
         val db = fileSystem.getDB(offsetsPath)
         val offsetsMap = db
@@ -112,7 +131,7 @@ class IndexesManager(private val fileSystem: FileSystem, private val offsetsBuil
         for (offset in offsets) {
             offsetsMap[offset.charPosition] = offset.byteOffset
         }
-        db.atomicString("contentMd5").create().set(Md5HashConverter.INSTANCE.serialize(csvReader.md5Hash))
+        db.atomicString("contentMd5").create().set(Md5HashConverter.INSTANCE.serialize(dataReader.contentHash))
         return offsetsMap
     }
 

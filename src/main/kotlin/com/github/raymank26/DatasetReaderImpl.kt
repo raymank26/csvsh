@@ -9,7 +9,7 @@ class DatasetReaderImpl(private val contentDataProvider: ContentDataProvider,
 
     override val columnInfo: List<ColumnInfo> = metadata.columnInfos
     override val availableIndexes: List<IndexDescriptionAndPath> = metadata.indexes
-    override val md5Hash: Md5Hash = metadata.csvMd5
+    override val contentHash: Md5Hash = metadata.csvMd5
 
     private val closeIndexes = AutoCloseable {
         availableIndexes.forEach {

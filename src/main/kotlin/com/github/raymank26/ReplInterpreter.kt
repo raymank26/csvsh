@@ -9,6 +9,7 @@ import org.jline.reader.impl.DefaultParser
 import org.jline.reader.impl.completer.StringsCompleter
 import org.jline.reader.impl.history.DefaultHistory
 import org.jline.terminal.TerminalBuilder
+import java.io.PrintWriter
 import java.nio.file.Paths
 
 /**
@@ -41,11 +42,7 @@ class ReplInterpreter {
             }
 
             try {
-                when (val response = engine.execute(line)) {
-                    is DatasetResponse -> outputWriter.println(prettifyDataset(response.value))
-                    is TextResponse -> outputWriter.println(response.value)
-                    is VoidResponse -> Unit
-                }
+                processResponse(engine.execute(line), outputWriter)
             } catch (e: PlannerException) {
                 outputWriter.println("Unable to build plan: ${e.message}")
             } catch (e: ExecutorException) {
@@ -53,6 +50,15 @@ class ReplInterpreter {
             } catch (e: SyntaxException) {
                 outputWriter.println("Syntax exception: ${e.message}")
             }
+        }
+    }
+
+    private fun processResponse(response: ExecutorResponse, outputWriter: PrintWriter) {
+        when (response) {
+            is DatasetResponse -> outputWriter.println(prettifyDataset(response.value))
+            is TextResponse -> outputWriter.println(response.value)
+            is VoidResponse -> Unit
+            is CompositeResponse -> response.parts.forEach { processResponse(it, outputWriter) }
         }
     }
 }

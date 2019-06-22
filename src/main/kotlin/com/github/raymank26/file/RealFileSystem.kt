@@ -35,6 +35,10 @@ class RealFileSystem : FileSystem {
     override fun getOutputStream(path: Path): OutputStream {
         return FileOutputStream(path.toFile())
     }
+
+    override fun getSize(path: Path): Long {
+        return Files.size(path)
+    }
 }
 
 private class RealNavigableReader(private val randomAccessFile: RandomAccessFile) : NavigableReader {
