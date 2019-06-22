@@ -85,25 +85,23 @@ class IndexesManager(private val fileSystem: FileSystem, private val offsetsBuil
 
         val offsetsPath = getOffsetsPath(dataPath)
 
-        var offsetsDB: BTreeMap<Long, Long>? = loadOffsets(offsetsPath, dataReader.contentHash)
-        if (offsetsDB == null) {
-            offsetsDB = persistOffsets(dataReader, offsetsPath)
+        var offsetsMap: Map<Long, Long>? = loadOffsets(offsetsPath, dataReader.contentHash)
+        if (offsetsMap == null) {
+            offsetsMap = persistOffsets(dataReader, offsetsPath)
         }
 
-        offsetsDB.use {
-            dataReader.getIterator()
-                    .transform { data -> data.groupBy { it.getCell(fieldName) }.asSequence().filter { it.key.asValue != null }.sortedBy { it.key } }
-                    .forEach { entry ->
-                        indexContent.put(entry.key.asValue!!, entry.value.map { offsetsDB[it.characterOffset!!]!! }.toLongArray())
-                    }
-            indexContent.create().close()
-        }
+        dataReader.getIterator()
+                .transform { data -> data.groupBy { it.getCell(fieldName) }.asSequence().filter { it.key.asValue != null }.sortedBy { it.key } }
+                .forEach { entry ->
+                    indexContent.put(entry.key.asValue!!, entry.value.map { offsetsMap.getValue(it.characterOffset!!) }.toLongArray())
+                }
+        indexContent.create().close()
     }
 
     private fun getOffsetsPath(dataPath: Path) =
             dataPath.parent.resolve(getFilenameWithoutExtension(dataPath) + ".offsets")
 
-    private fun loadOffsets(offsetsPath: Path, dataContentMd5: Md5Hash): BTreeMap<Long, Long>? {
+    private fun loadOffsets(offsetsPath: Path, dataContentMd5: Md5Hash): Map<Long, Long>? {
         if (!fileSystem.isFileExists(offsetsPath)) {
             return null
         }
@@ -113,22 +111,24 @@ class IndexesManager(private val fileSystem: FileSystem, private val offsetsBuil
             db.close()
             return null
         }
-        return db
-                .treeMap("offsets", Serializer.LONG, Serializer.LONG)
-                .open()
+        return db.treeMap("offsets", Serializer.LONG, Serializer.LONG).open().use {
+            it.asSequence().map { Pair(it.key, it.value) }.toMap()
+        }
     }
 
-    private fun persistOffsets(dataReader: DatasetReader, offsetsPath: Path): BTreeMap<Long, Long> {
+    private fun persistOffsets(dataReader: DatasetReader, offsetsPath: Path): Map<Long, Long> {
         val offsets: List<DatasetOffset> = dataReader.getNavigableReader().use {
             offsetsBuilder.buildOffsets(it, dataReader.getIterator().map { v -> v.characterOffset!! }.toList())
         }
-        val db = fileSystem.getDB(offsetsPath)
-        val offsetsMap: BTreeMap<Long, Long> = db
-                .treeMap("offsets", Serializer.LONG, Serializer.LONG)
-                .createFrom(offsets.asSequence().map { Pair(it.charPosition, it.byteOffset) }.iterator())
+        fileSystem.getDB(offsetsPath).use { db ->
+            db
+                    .treeMap("offsets", Serializer.LONG, Serializer.LONG)
+                    .createFrom(offsets.asSequence().map { Pair(it.charPosition, it.byteOffset) }.iterator())
 
-        db.atomicString("contentMd5").create().set(Md5HashConverter.INSTANCE.serialize(dataReader.contentHash))
-        return offsetsMap
+            db.atomicString("contentMd5").create().set(Md5HashConverter.INSTANCE.serialize(dataReader.contentHash))
+            db.close()
+        }
+        return offsets.asSequence().map { Pair(it.charPosition, it.byteOffset) }.toMap(HashMap())
     }
 
     private fun getIndexPath(dataPath: Path): Path {

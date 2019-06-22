@@ -19,7 +19,7 @@ class FileOffsetsBuilderTest {
     private val fileOffsetBuilder = FileOffsetsBuilder()
 
     @Test
-    fun testOffest() {
+    fun testOffset() {
         val dataPath = Paths.get("/test/file")
         val fileSystem = InMemoryFileSystem(mapOf(Pair(dataPath, testInput)))
         val data = dataProvider.get(fileSystem.getNavigableReader(dataPath)).toList()

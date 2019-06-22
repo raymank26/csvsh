@@ -20,16 +20,17 @@ class FileOffsetsBuilder {
         var offsetsIndex = 0
         var nextCharPosition = characterOffsets[offsetsIndex]
         var byteOffset = 0L
-        for (charPosition in 0 until characterOffsets.last()) {
+        for (charPosition in 0..characterOffsets.last()) {
             if (charPosition == nextCharPosition) {
-                offsetsIndex++
-                nextCharPosition = characterOffsets[offsetsIndex]
-
                 offsets.add(DatasetOffset(charPosition, byteOffset))
+                offsetsIndex++
+                if (offsetsIndex == characterOffsets.size) {
+                    break
+                }
+                nextCharPosition = characterOffsets[offsetsIndex]
             }
             byteOffset += reader.read().toChar().toString().toByteArray(charset = charset).size
         }
-        offsets.add(DatasetOffset(nextCharPosition, byteOffset))
         return offsets
     }
 }
