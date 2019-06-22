@@ -1,10 +1,13 @@
 package com.github.raymank26
 
 import com.github.raymank26.file.FileSystem
+import com.github.raymank26.file.Md5Hash
+import com.github.raymank26.file.Md5HashConverter
 import com.github.raymank26.file.getFilenameWithoutExtension
 import com.google.common.collect.ImmutableMap
 import org.mapdb.BTreeMap
 import org.mapdb.DB
+import org.mapdb.HTreeMap
 import org.mapdb.Serializer
 import org.mapdb.serializer.GroupSerializer
 import java.nio.file.Path
@@ -18,7 +21,7 @@ private val MAPDB_SERIALIZERS: Map<FieldType, GroupSerializer<*>> = ImmutableMap
 /**
  * Date: 2019-06-13.
  */
-class IndexesManager(private val fileSystem: FileSystem) {
+class IndexesManager(private val fileSystem: FileSystem, private val offsetsBuilder: FileOffsetsBuilder) {
 
     fun loadIndexes(csvPath: Path): List<IndexDescriptionAndPath> {
         val indexFile: Path = getIndexPath(csvPath)
@@ -65,16 +68,55 @@ class IndexesManager(private val fileSystem: FileSystem) {
                 .treeMap("$indexName|$fieldName|${columnInfo.type.mark}", keySerializer as GroupSerializer<Any>, Serializer.LONG_ARRAY)
                 .createFromSink()
 
-        csvReader.getIterator()
-                .transform { data -> data.groupBy { it.getCell(fieldName) }.asSequence().filter { it.key.asValue != null }.sortedBy { it.key } }
-                .forEach { entry ->
-                    indexContent.put(entry.key.asValue!!, entry.value.map { it.offset!! }.toLongArray())
-                }
-        indexContent.create().close()
+        val offsetsPath = dataPath.parent.resolve(getFilenameWithoutExtension(dataPath) + ".offsets")
+
+        var offsetsDB: HTreeMap<Long, Long>? = loadOffsets(offsetsPath, csvReader.md5Hash)
+        if (offsetsDB == null) {
+            offsetsDB = persistOffsets(csvReader, offsetsPath)
+        }
+
+        offsetsDB.use {
+            csvReader.getIterator()
+                    .transform { data -> data.groupBy { it.getCell(fieldName) }.asSequence().filter { it.key.asValue != null }.sortedBy { it.key } }
+                    .forEach { entry ->
+                        indexContent.put(entry.key.asValue!!, entry.value.map { offsetsDB[it.characterOffset!!]!! }.toLongArray())
+                    }
+            indexContent.create().close()
+        }
+    }
+
+    private fun loadOffsets(offsetsPath: Path, dataContentMd5: Md5Hash): HTreeMap<Long, Long>? {
+        if (!fileSystem.isFileExists(offsetsPath)) {
+            return null
+        }
+        val db = fileSystem.getDB(offsetsPath)
+        val md5: Md5Hash = db.atomicString("contentMd5").open().get().let { Md5HashConverter.INSTANCE.deserialize(it) }
+        if (md5 != dataContentMd5) {
+            db.close()
+            return null
+        }
+        return db
+                .hashMap("offsets", Serializer.LONG, Serializer.LONG)
+                .open()
+    }
+
+    private fun persistOffsets(csvReader: DatasetReader, offsetsPath: Path): HTreeMap<Long, Long> {
+        val offsets: List<DatasetOffset> = csvReader.getNavigableReader().use {
+            csvReader.getIterator()
+            offsetsBuilder.buildOffsets(it, csvReader.getIterator().map { it.characterOffset!! }.toList())
+        }
+        val db = fileSystem.getDB(offsetsPath)
+        val offsetsMap = db
+                .hashMap("offsets", Serializer.LONG, Serializer.LONG)
+                .create()
+        for (offset in offsets) {
+            offsetsMap[offset.charPosition] = offset.byteOffset
+        }
+        db.atomicString("contentMd5").create().set(Md5HashConverter.INSTANCE.serialize(csvReader.md5Hash))
+        return offsetsMap
     }
 
     private fun getIndexPath(dataPath: Path): Path {
         return dataPath.parent.resolve(getFilenameWithoutExtension(dataPath) + ".index")
     }
-
 }

@@ -2,9 +2,9 @@ package com.github.raymank26
 
 import com.github.raymank26.file.FileSystem
 import com.github.raymank26.file.Md5Hash
+import com.github.raymank26.file.Md5HashConverter
 import com.github.raymank26.file.NavigableReader
 import com.github.raymank26.file.getFilenameWithoutExtension
-import com.google.common.io.BaseEncoding
 import org.apache.commons.csv.CSVFormat
 import org.apache.commons.csv.CSVParser
 import org.apache.commons.csv.CSVRecord
@@ -42,14 +42,14 @@ class DatasetMetadataProvider(private val fileSystem: FileSystem,
         return try {
             val prop = Properties()
             prop.load(fileSystem.getNavigableReader(metadataPath).asReader())
-            val md5: ByteArray = BaseEncoding.base16().lowerCase().decode(prop.getProperty("md5"))
+            val md5: Md5Hash = Md5HashConverter.INSTANCE.deserialize(prop.getProperty("md5"))
             val columns: List<ColumnInfo> = prop.getProperty("columns")
                     .split(";")
                     .map { pair ->
                         val (type, name) = pair.split(",")
                         ColumnInfo(FieldType.MARK_TO_FIELD_TYPE.getValue(type.toByte()), name)
                     }
-            DatasetMetadata(columns, indexManager.loadIndexes(dataPath), Md5Hash(md5))
+            DatasetMetadata(columns, indexManager.loadIndexes(dataPath), md5)
         } catch (e: Exception) {
             LOG.warn("Unable to read metadata for path = $metadataPath", e)
             null
@@ -75,7 +75,7 @@ class DatasetMetadataProvider(private val fileSystem: FileSystem,
             }
             val prop = Properties()
             val md5 = fileSystem.getMd5(dataPath)
-            prop.setProperty("md5", BaseEncoding.base16().lowerCase().encode(md5.content))
+            prop.setProperty("md5", Md5HashConverter.INSTANCE.serialize(md5))
             val columnInfos = headers.asSequence()
                     .withIndex().map { (index, value) ->
                         val type = currentResult[index] ?: FieldType.STRING
@@ -122,7 +122,7 @@ interface ContentDataProvider {
     fun get(reader: NavigableReader, offsets: List<Long>): ClosableSequence<ContentRow>
 }
 
-data class ContentRow(val columns: List<String?>, val offset: Long)
+data class ContentRow(val columns: List<String?>, val firstCharacterPosition: Long)
 
 class CsvContentDataProvider(private val csvFormat: CSVFormat) : ContentDataProvider {
     override fun header(reader: NavigableReader): List<String> {
@@ -144,18 +144,20 @@ class CsvContentDataProvider(private val csvFormat: CSVFormat) : ContentDataProv
     }
 
     override fun get(reader: NavigableReader, offsets: List<Long>): ClosableSequence<ContentRow> {
-        val rows = offsets.asSequence().mapIndexed { i, offset ->
+        val rows = offsets.map { offset ->
             reader.seek(offset)
-            val iterator = CSVParser(reader.asReader(), csvFormat, offset, i.toLong()).iterator()
+            val iterator = CSVParser(reader.asReader(), csvFormat).iterator()
             recordToRow(iterator.next())
         }
-        return ClosableSequence(rows, reader)
+        return ClosableSequence(rows.asSequence(), reader)
     }
 
     private fun recordToRow(record: CSVRecord): ContentRow {
         return ContentRow((0 until record.size()).map { record[it] }, record.characterPosition)
     }
 }
+
+data class DatasetOffset(val charPosition: Long, val byteOffset: Long)
 
 data class DatasetMetadata(val columnInfos: List<ColumnInfo>,
                            val indexes: List<IndexDescriptionAndPath>,

@@ -1,6 +1,8 @@
 package com.github.raymank26
 
 import com.github.raymank26.file.FileSystem
+import com.github.raymank26.file.Md5Hash
+import com.github.raymank26.file.NavigableReader
 import java.nio.file.Path
 
 /**
@@ -17,7 +19,7 @@ class FilesystemDatasetReaderFactory(
 
     override fun getReader(path: Path): DatasetReader? {
         val metadata = datasetMetadataProvider.getOrCreate(path)
-        return DatasetReaderImpl(contentDataProvider, { fileSystem.getNavigableReader(path) }, metadata.columnInfos, metadata.indexes)
+        return DatasetReaderImpl(contentDataProvider, { fileSystem.getNavigableReader(path) }, metadata)
     }
 }
 
@@ -26,7 +28,7 @@ data class DatasetResult(val rows: ClosableSequence<DatasetRow>, val columnInfo:
 data class DatasetRow(val rowNum: Int,
                       val columns: List<SqlValueAtom>,
                       val columnInfo: List<ColumnInfo>,
-                      val offset: Long?) {
+                      val characterOffset: Long?) {
 
     private val fieldNameToInfo: Map<String, Pair<ColumnInfo, Int>> = columnInfo.withIndex().associate {
         Pair(it.value.fieldName, Pair(it.value, it.index))
@@ -54,10 +56,13 @@ private fun fieldNotFound(name: String): Nothing {
 interface DatasetReader {
     val columnInfo: List<ColumnInfo>
     val availableIndexes: List<IndexDescriptionAndPath>
+    val md5Hash: Md5Hash
 
     fun getIterator(): ClosableSequence<DatasetRow>
 
     fun getIterator(offsets: List<Long>): ClosableSequence<DatasetRow>
+
+    fun getNavigableReader(): NavigableReader
 }
 
 class ClosableSequence<T>(private val sequence: Sequence<T>, private val resource: AutoCloseable?) : AutoCloseable {

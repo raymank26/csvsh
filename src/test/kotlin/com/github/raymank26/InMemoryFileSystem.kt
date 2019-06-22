@@ -10,6 +10,7 @@ import java.io.InputStream
 import java.io.InputStreamReader
 import java.io.OutputStream
 import java.io.Reader
+import java.nio.file.Files
 import java.nio.file.Path
 
 /**
@@ -22,7 +23,11 @@ class InMemoryFileSystem(private val contentMapping: Map<Path, String>, private 
     constructor(contentMapping: Map<Path, String>) : this(contentMapping, emptyMap())
 
     override fun isFileExists(path: Path): Boolean {
-        return contentMapping.containsKey(path) || indexesMapping.containsKey(path)
+        if (contentMapping.containsKey(path)) {
+            return true
+        }
+        val indexPath = indexesMapping[path]
+        return indexPath != null && Files.exists(indexPath)
     }
 
     override fun getDB(path: Path): DB {
@@ -49,17 +54,32 @@ class InMemoryFileSystem(private val contentMapping: Map<Path, String>, private 
 }
 
 class ByteArrayFile(private val buf: ByteArray) : NavigableReader {
+    private var inputStream = CountableInputStream(buf, 0, buf.size)
 
-    private var reader = InputStreamReader(ByteArrayInputStream(buf, 0, buf.size))
-
+    private var reader = InputStreamReader(inputStream)
     override fun asReader(): Reader {
         return reader
     }
 
     override fun seek(offset: Long) {
-        reader = InputStreamReader(ByteArrayInputStream(buf, offset.toInt(), buf.size))
+        inputStream = CountableInputStream(buf, offset.toInt(), buf.size)
+        reader = InputStreamReader(inputStream)
+    }
+
+    override fun getByteOffset(): Long {
+        return inputStream.getPos().toLong()
+    }
+
+    override fun getEncoding(): String {
+        return reader.encoding
     }
 
     override fun close() {
+    }
+}
+
+private class CountableInputStream(buf: ByteArray, offset: Int, length: Int) : ByteArrayInputStream(buf, offset, length) {
+    fun getPos(): Int {
+        return pos
     }
 }

@@ -35,9 +35,15 @@ class SqlExecutor {
 
     private fun readDataset(sqlPlan: SqlPlan): DatasetResult {
         val newSequence = if (sqlPlan.wherePlanDescription != null) {
-            val result = DatasetIndexOffsetCollector(sqlPlan.datasetReader.availableIndexes).visitExpression(sqlPlan.wherePlanDescription.expressionTree)
-            result?.invoke()?.let { sqlPlan.datasetReader.getIterator(it.sorted().toList()) }
-                    ?: sqlPlan.datasetReader.getIterator()
+            val offsets: Set<Long> = DatasetIndexOffsetCollector(sqlPlan.datasetReader.availableIndexes)
+                    .visitExpression(sqlPlan.wherePlanDescription.expressionTree)
+                    ?.invoke() ?: emptySet()
+
+            if (offsets.isEmpty()) {
+                sqlPlan.datasetReader.getIterator()
+            } else {
+                sqlPlan.datasetReader.getIterator(offsets.toList().sorted())
+            }
         } else {
             sqlPlan.datasetReader.getIterator()
         }
@@ -60,7 +66,7 @@ class SqlExecutor {
             for (allowedField in allowedFields) {
                 columns.add(row.getCell(allowedField))
             }
-            DatasetRow(row.rowNum, columns, newColumnInfo, row.offset)
+            DatasetRow(row.rowNum, columns, newColumnInfo, row.characterOffset)
         }
         return DatasetResult(newSequence, newColumnInfo)
     }

@@ -2,12 +2,14 @@ package com.github.raymank26.file
 
 import com.google.common.hash.Funnels
 import com.google.common.hash.Hashing
+import com.google.common.io.BaseEncoding
 import com.google.common.io.ByteStreams
 import org.mapdb.DB
 import java.io.InputStream
 import java.io.OutputStream
 import java.io.Reader
 import java.nio.file.Path
+import java.util.Arrays
 
 interface FileSystem {
 
@@ -34,6 +36,8 @@ interface FileSystem {
 interface NavigableReader : AutoCloseable {
     fun asReader(): Reader
     fun seek(offset: Long)
+    fun getByteOffset(): Long
+    fun getEncoding(): String
 }
 
 data class Md5Hash(val content: ByteArray) {
@@ -49,6 +53,25 @@ data class Md5Hash(val content: ByteArray) {
 
     override fun hashCode(): Int {
         return content.contentHashCode()
+    }
+
+    override fun toString(): String {
+        return "Md5Hash(content=${Arrays.toString(content)})"
+    }
+}
+
+class Md5HashConverter {
+
+    companion object {
+        val INSTANCE = Md5HashConverter()
+    }
+
+    fun serialize(md5Hash: Md5Hash): String {
+        return BaseEncoding.base16().lowerCase().encode(md5Hash.content)
+    }
+
+    fun deserialize(content: String): Md5Hash {
+        return Md5Hash(BaseEncoding.base16().lowerCase().decode(content))
     }
 }
 

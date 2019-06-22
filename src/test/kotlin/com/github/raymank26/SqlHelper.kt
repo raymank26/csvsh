@@ -3,6 +3,7 @@ package com.github.raymank26
 import org.apache.commons.csv.CSVFormat
 import org.junit.After
 import java.nio.file.Files
+import java.nio.file.Path
 import java.nio.file.Paths
 import kotlin.test.assertEquals
 import kotlin.test.fail
@@ -25,13 +26,19 @@ private val testInput = """
     foobarbaz,2,-1
 """.trimIndent()
 
-val dataPath = Paths.get("/test/input.csv")
-val indexPath = Paths.get("/test/input.index")
-val realIndexFilePath = Paths.get("/tmp/csvTmpIndex.tmp")
-val fileSystem = InMemoryFileSystem(mapOf(Pair(dataPath, testInput)), mapOf(Pair(indexPath, realIndexFilePath)))
+val dataPath: Path = Paths.get("/test/input.csv")
+val indexPath: Path = Paths.get("/test/input.index")
+val offsetsPath: Path = Paths.get("/test/input.offsets")
+val realIndexFilePath: Path = Paths.get("/tmp/csvTmpIndex.tmp")
+val realOffsetsFilePath: Path = Paths.get("/tmp/csvTmpOffsets.tmp")
+val fileSystem = InMemoryFileSystem(mapOf(Pair(dataPath, testInput)), mapOf(
+        Pair(indexPath, realIndexFilePath),
+        Pair(offsetsPath, realOffsetsFilePath)
+))
 
 val dataProvider = CsvContentDataProvider(CSVFormat.RFC4180.withNullString("null"))
-val indexesManager = IndexesManager(fileSystem)
+val fileOffsetsBuilder = FileOffsetsBuilder()
+val indexesManager = IndexesManager(fileSystem, fileOffsetsBuilder)
 val metadataProvider = DatasetMetadataProvider(fileSystem, dataProvider, indexesManager)
 val readerFactory = FilesystemDatasetReaderFactory(metadataProvider, fileSystem, dataProvider)
 
@@ -69,6 +76,9 @@ abstract class SqlTestUtils {
     fun deleteRealFile() {
         if (Files.exists(realIndexFilePath)) {
             Files.delete(realIndexFilePath)
+        }
+        if (Files.exists(realOffsetsFilePath)) {
+            Files.delete(realOffsetsFilePath)
         }
     }
 }

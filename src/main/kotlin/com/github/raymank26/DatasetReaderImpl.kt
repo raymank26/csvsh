@@ -1,11 +1,15 @@
 package com.github.raymank26
 
+import com.github.raymank26.file.Md5Hash
 import com.github.raymank26.file.NavigableReader
 
 class DatasetReaderImpl(private val contentDataProvider: ContentDataProvider,
                         private val readerFactory: () -> NavigableReader,
-                        override val columnInfo: List<ColumnInfo>,
-                        override val availableIndexes: List<IndexDescriptionAndPath>) : DatasetReader {
+                        metadata: DatasetMetadata) : DatasetReader {
+
+    override val columnInfo: List<ColumnInfo> = metadata.columnInfos
+    override val availableIndexes: List<IndexDescriptionAndPath> = metadata.indexes
+    override val md5Hash: Md5Hash = metadata.csvMd5
 
     private val closeIndexes = AutoCloseable {
         availableIndexes.forEach {
@@ -32,8 +36,12 @@ class DatasetReaderImpl(private val contentDataProvider: ContentDataProvider,
     private fun toRows(): (Sequence<ContentRow>) -> Sequence<DatasetRow> {
         return { seq ->
             seq.mapIndexed { i, contentRow ->
-                DatasetRow(i, columnInfo.mapIndexed { j, col -> createSqlAtom(contentRow.columns[j], col.type) }, columnInfo, contentRow.offset)
+                DatasetRow(i, columnInfo.mapIndexed { j, col -> createSqlAtom(contentRow.columns[j], col.type) }, columnInfo, contentRow.firstCharacterPosition)
             }
         }
+    }
+
+    override fun getNavigableReader(): NavigableReader {
+        return readerFactory.invoke()
     }
 }

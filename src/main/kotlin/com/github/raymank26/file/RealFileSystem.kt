@@ -38,7 +38,6 @@ class RealFileSystem : FileSystem {
 }
 
 private class RealNavigableReader(private val randomAccessFile: RandomAccessFile) : NavigableReader {
-
     private val reader = FileReader(randomAccessFile.fd)
 
     override fun asReader(): Reader {
@@ -47,6 +46,14 @@ private class RealNavigableReader(private val randomAccessFile: RandomAccessFile
 
     override fun seek(offset: Long) {
         randomAccessFile.seek(offset)
+    }
+
+    override fun getByteOffset(): Long {
+        return randomAccessFile.filePointer
+    }
+
+    override fun getEncoding(): String {
+        return reader.encoding
     }
 
     override fun close() {
