@@ -258,7 +258,3 @@ data class OrderByPlanDescription(
 )
 
 data class WherePlanDescription(val expressionTree: Expression)
-
-
-
-
