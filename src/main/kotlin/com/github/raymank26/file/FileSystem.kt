@@ -38,6 +38,7 @@ interface NavigableReader : AutoCloseable {
     fun seek(offset: Long)
     fun getByteOffset(): Long
     fun getEncoding(): String
+    fun probe(length: Int): String
 }
 
 fun getFilenameWithoutExtension(path: Path): String {

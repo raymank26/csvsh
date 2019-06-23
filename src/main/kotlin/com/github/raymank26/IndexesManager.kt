@@ -4,6 +4,7 @@ import com.github.raymank26.file.FileSystem
 import com.github.raymank26.file.Md5Hash
 import com.github.raymank26.file.Md5HashConverter
 import com.github.raymank26.file.getFilenameWithoutExtension
+import com.google.common.base.Preconditions
 import com.google.common.collect.ImmutableMap
 import org.mapdb.BTreeMap
 import org.mapdb.DB
@@ -85,7 +86,7 @@ class IndexesManager(private val fileSystem: FileSystem, private val offsetsBuil
 
         val offsetsPath = getOffsetsPath(dataPath)
 
-        var offsetsMap: Map<Long, Long>? = loadOffsets(offsetsPath, dataReader.contentHash)
+        var offsetsMap: Map<Long, Long>? = loadOffsets(offsetsPath, dataReader.contentHash, dataReader)
         if (offsetsMap == null) {
             offsetsMap = persistOffsets(dataReader, offsetsPath)
         }
@@ -101,7 +102,7 @@ class IndexesManager(private val fileSystem: FileSystem, private val offsetsBuil
     private fun getOffsetsPath(dataPath: Path) =
             dataPath.parent.resolve(getFilenameWithoutExtension(dataPath) + ".offsets")
 
-    private fun loadOffsets(offsetsPath: Path, dataContentMd5: Md5Hash): Map<Long, Long>? {
+    private fun loadOffsets(offsetsPath: Path, dataContentMd5: Md5Hash, dataReader: DatasetReader): Map<Long, Long>? {
         if (!fileSystem.isFileExists(offsetsPath)) {
             return null
         }
@@ -111,9 +112,15 @@ class IndexesManager(private val fileSystem: FileSystem, private val offsetsBuil
             db.close()
             return null
         }
-        return db.treeMap("offsets", Serializer.LONG, Serializer.LONG).open().use {
-            it.asSequence().map { Pair(it.key, it.value) }.toMap()
+        val loadedOffsets = db.treeMap("offsets", Serializer.LONG, Serializer.LONG).open().use {
+            it.asSequence().map { v -> Pair(v.key, v.value) }.toMap(HashMap())
         }
+        val expectedOffsets = dataReader.getNavigableReader().use {
+            offsetsBuilder.buildOffsets(it, dataReader.getIterator().map { v -> v.characterOffset!! }.toList()).asSequence()
+                    .map { v -> Pair(v.charPosition, v.byteOffset) }.toMap(HashMap())
+        }
+        Preconditions.checkArgument(loadedOffsets == expectedOffsets)
+        return loadedOffsets
     }
 
     private fun persistOffsets(dataReader: DatasetReader, offsetsPath: Path): Map<Long, Long> {

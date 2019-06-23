@@ -143,12 +143,13 @@ class CsvContentDataProvider(private val csvFormat: CSVFormat) : ContentDataProv
     }
 
     override fun get(reader: NavigableReader, offsets: List<Long>): ClosableSequence<ContentRow> {
-        val rows = offsets.map { offset ->
+        val rows = offsets.asSequence().map { offset ->
             reader.seek(offset)
             val iterator = CSVParser(reader.asReader(), csvFormat).iterator()
-            recordToRow(iterator.next())
+            val row = recordToRow(iterator.next())
+            row
         }
-        return ClosableSequence(rows.asSequence(), reader)
+        return ClosableSequence(rows, reader)
     }
 
     private fun recordToRow(record: CSVRecord): ContentRow {

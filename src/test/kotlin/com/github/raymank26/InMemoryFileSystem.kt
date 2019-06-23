@@ -57,6 +57,10 @@ class InMemoryFileSystem(private val contentMapping: Map<Path, String>, private 
 }
 
 class ByteArrayFile(private val buf: ByteArray) : NavigableReader {
+    override fun probe(length: Int): String {
+        throw UnsupportedOperationException()
+    }
+
     private var inputStream = CountableInputStream(buf, 0, buf.size)
 
     private var reader = InputStreamReader(inputStream)
