@@ -21,6 +21,10 @@ class DatasetMetadataProvider(private val fileSystem: FileSystem,
                               private val dataReaderProvider: ContentDataProvider,
                               private val indexManager: IndexesManager) {
 
+    fun getSize(dataPath: Path): Long {
+        return fileSystem.getSize(dataPath)
+    }
+
     fun getOrCreate(dataPath: Path): DatasetMetadata {
         val metadataPath = getMetadataPath(dataPath)
         val metadata = readMetadataContent(metadataPath, dataPath)
