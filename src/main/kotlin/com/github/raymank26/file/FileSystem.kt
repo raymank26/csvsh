@@ -3,17 +3,18 @@ package com.github.raymank26.file
 import com.google.common.hash.Funnels
 import com.google.common.hash.Hashing
 import com.google.common.io.ByteStreams
-import org.mapdb.DB
+import org.lmdbjava.Env
 import java.io.InputStream
 import java.io.OutputStream
 import java.io.Reader
+import java.nio.ByteBuffer
 import java.nio.file.Path
 
 interface FileSystem {
 
     fun isFileExists(path: Path): Boolean
 
-    fun getDB(path: Path): DB
+    fun getDB(path: Path): Env<ByteBuffer>
 
     fun getNavigableReader(path: Path): NavigableReader
 

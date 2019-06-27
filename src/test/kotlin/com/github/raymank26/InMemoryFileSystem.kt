@@ -2,14 +2,15 @@ package com.github.raymank26
 
 import com.github.raymank26.file.FileSystem
 import com.github.raymank26.file.NavigableReader
-import org.mapdb.DB
-import org.mapdb.DBMaker
+import org.lmdbjava.Env
+import org.lmdbjava.EnvFlags
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import java.io.InputStream
 import java.io.InputStreamReader
 import java.io.OutputStream
 import java.io.Reader
+import java.nio.ByteBuffer
 import java.nio.file.Files
 import java.nio.file.Path
 
@@ -29,8 +30,16 @@ class InMemoryFileSystem(private val contentMapping: Map<Path, String>, private 
         return indexPath != null && Files.exists(indexPath)
     }
 
-    override fun getDB(path: Path): DB {
-        return requireNotNull(indexesMapping[path]?.let { DBMaker.fileDB(it.toFile()).make() }) { "Index for path does not exist" }
+    override fun getDB(path: Path): Env<ByteBuffer> {
+        return requireNotNull(indexesMapping[path]?.let {
+            if (!Files.exists(it)) {
+                Files.createFile(it)
+            }
+            Env.create()
+                    .setMapSize(10_485_760)
+                    .setMaxDbs(100)
+                    .open(it.toFile(), EnvFlags.MDB_NOSUBDIR)
+        }) { "Index for path does not exist" }
     }
 
     override fun getNavigableReader(path: Path): NavigableReader {

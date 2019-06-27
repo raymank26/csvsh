@@ -1,7 +1,7 @@
 package com.github.raymank26.file
 
-import org.mapdb.DB
-import org.mapdb.DBMaker
+import org.lmdbjava.Env
+import org.lmdbjava.EnvFlags
 import java.io.FileInputStream
 import java.io.FileOutputStream
 import java.io.FileReader
@@ -9,6 +9,7 @@ import java.io.InputStream
 import java.io.OutputStream
 import java.io.RandomAccessFile
 import java.io.Reader
+import java.nio.ByteBuffer
 import java.nio.file.Files
 import java.nio.file.Path
 
@@ -16,8 +17,14 @@ import java.nio.file.Path
  * Date: 2019-06-10.
  */
 class RealFileSystem : FileSystem {
-    override fun getDB(path: Path): DB {
-        return DBMaker.fileDB(path.toFile()).make()
+    override fun getDB(path: Path): Env<ByteBuffer> {
+        if (!Files.exists(path)) {
+            Files.createFile(path)
+        }
+        return Env.create()
+                .setMapSize(500 * (1024 * 1024))
+                .setMaxDbs(100)
+                .open(path.toFile(), EnvFlags.MDB_NOSUBDIR)
     }
 
     override fun isFileExists(path: Path): Boolean {

@@ -17,7 +17,9 @@ dependencies {
 
     implementation("org.apache.commons:commons-csv:1.6")
 
-    implementation("org.mapdb:mapdb:3.0.7")
+    implementation("com.google.guava:guava:28.0-jre")
+
+    implementation("org.lmdbjava:lmdbjava:0.7.0")
 
     implementation("com.jakewharton.fliptables:fliptables:1.0.2")
 
