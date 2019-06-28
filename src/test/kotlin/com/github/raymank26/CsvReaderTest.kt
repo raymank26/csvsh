@@ -138,18 +138,11 @@ class CsvReaderTest {
                 listOf(IndexDescription("aIndex", "a"), IndexDescription("bIndex", "b"), IndexDescription("cIndex", "c")),
                 metadata.indexes.map { it.description })
         println(metadata)
-    }
 
-//    @Test
-//    fun testOffsets() {
-//        val dataPath = Paths.get("/path/content.csv")
-//        val inMemoryFS = InMemoryFileSystem(mapOf(Pair(dataPath, testInput)))
-//
-//        val indexesManager = IndexesManager(inMemoryFS)
-//        val metadataProvider = DatasetMetadataProvider(inMemoryFS, dataProvider, indexesManager)
-//        val readerFactory = FilesystemDatasetReaderFactory(metadataProvider, inMemoryFS, dataProvider)
-//        val reader = readerFactory.getReader(dataPath)!!
-//    }
+        indexesManager.dropIndex(dataPath, "aIndex")
+        indexesManager.dropIndex(dataPath, "bIndex")
+        indexesManager.dropIndex(dataPath, "cIndex")
+    }
 
     @Before
     @After

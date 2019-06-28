@@ -33,6 +33,11 @@ class SqlGrammarTest : SqlTestUtils() {
     }
 
     @Test
+    fun testDropIndex() {
+        testParser("DROP INDEX FOO ON 'foo'")
+    }
+
+    @Test
     fun testDescribe() {
         testParser("DESCRIBE TABLE 'foo'")
     }

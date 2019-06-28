@@ -28,6 +28,10 @@ class ExecutorEngine {
                 ssExecutor.createIndex(parsedStatement.ctx, datasetReaderFactory)
                 VoidResponse
             }
+            is DropIndexType -> {
+                ssExecutor.dropIndex(parsedStatement.ctx)
+                VoidResponse
+            }
             is DescribeTable -> {
                 val description = ssExecutor.describeTable(parsedStatement.ctx, datasetReaderFactory)
                 if (description == null) {

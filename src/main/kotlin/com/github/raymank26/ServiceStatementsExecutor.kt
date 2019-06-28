@@ -14,10 +14,10 @@ class ServiceStatementsExecutor(private val datasetMetadataProvider: DatasetMeta
                                 private val indexesManager: IndexesManager) {
 
     fun createIndex(ctx: SqlParser.CreateIndexContext, datasetReaderFactory: DatasetReaderFactory) {
-        val csvPath = Paths.get(ctx.table().IDENTIFIER_Q().text.drop(1).dropLast(1))
+        val dataPath = Paths.get(ctx.table().IDENTIFIER_Q().text.drop(1).dropLast(1))
         val indexName = ctx.indexName().text
         val fieldName = ctx.reference().text
-        indexesManager.createIndex(csvPath, indexName, fieldName, datasetReaderFactory)
+        indexesManager.createIndex(dataPath, indexName, fieldName, datasetReaderFactory)
     }
 
     fun createDatasetReaderFactory(): DatasetReaderFactory {
@@ -57,5 +57,11 @@ class ServiceStatementsExecutor(private val datasetMetadataProvider: DatasetMeta
                 .asSequence()
                 .mapIndexed { i, it -> DatasetRow(i, listOf(StringValue(it.fieldName), StringValue(it.type.name)), newColumnInfo, null) }
         return DatasetResult(ClosableSequence(rows, null), newColumnInfo)
+    }
+
+    fun dropIndex(ctx: SqlParser.DropIndexContext) {
+        val csvPath = Paths.get(ctx.table().IDENTIFIER_Q().text.drop(1).dropLast(1))
+        val indexName = ctx.indexName().text
+        indexesManager.dropIndex(csvPath, indexName)
     }
 }

@@ -226,4 +226,35 @@ class IndexesManager(private val fileSystem: FileSystem, private val offsetsBuil
     private fun getIndexPath(dataPath: Path): Path {
         return dataPath.parent.resolve(getFilenameWithoutExtension(dataPath) + ".index")
     }
+
+    fun dropIndex(dataPath: Path, indexNameToDelete: String) {
+        val indexFile: Path = getIndexPath(dataPath)
+        if (!fileSystem.isFileExists(indexFile)) {
+            throw PlannerException("Unable to locate index for table = $dataPath")
+        }
+        fileSystem.getDB(indexFile).use { env ->
+            for (name in env.dbiNames.map { it.toString(Charset.defaultCharset()) }) {
+                if (!name.contains("|")) {
+                    continue
+                }
+                val (indexName, _, fieldTypeMark) = name.split("|")
+
+                if (indexName != indexNameToDelete) {
+                    continue
+                }
+
+                val byteMark = fieldTypeMark.toByte()
+                val fieldType = FieldType.MARK_TO_FIELD_TYPE[byteMark]!!
+                val serializer = requireNotNull(INDEX_SERIALIZERS[fieldType])
+
+                val indexContent = env
+                        .openDbi(name, serializer.comparator(), DbiFlags.MDB_DUPSORT)
+
+                env.txnWrite().use { tx ->
+                    indexContent.drop(tx, true)
+                    tx.commit()
+                }
+            }
+        }
+    }
 }
