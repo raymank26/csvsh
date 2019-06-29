@@ -249,7 +249,8 @@ data class SqlPlan(
         val wherePlanDescription: WherePlanDescription?,
         val groupByFields: List<String>,
         val orderByPlanDescription: OrderByPlanDescription?,
-        val limit: Int?
+        val limit: Int?,
+        val indexEvaluator: IndexEvaluator?
 )
 
 data class OrderByPlanDescription(

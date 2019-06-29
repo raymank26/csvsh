@@ -35,11 +35,10 @@ class SqlExecutor {
 
     private fun readDataset(sqlPlan: SqlPlan): DatasetResult {
         val newSequence = if (sqlPlan.wherePlanDescription != null) {
-            val offsets: Set<Long> = DatasetIndexOffsetCollector(sqlPlan.datasetReader.availableIndexes)
-                    .visitExpression(sqlPlan.wherePlanDescription.expressionTree)
-                    ?.invoke() ?: emptySet()
+            val offsets = sqlPlan.indexEvaluator?.offsets?.invoke()
+            println(offsets?.size ?: "empty")
 
-            if (offsets.isEmpty()) {
+            if (offsets == null) {
                 sqlPlan.datasetReader.getIterator()
             } else {
                 sqlPlan.datasetReader.getIterator(offsets.toList().sorted())
@@ -58,7 +57,7 @@ class SqlExecutor {
         }
 
         val fieldNameToInfo = dataset.columnInfo.associateBy { it.fieldName }
-        val newColumnInfo = allowedFields.map { fieldNameToInfo[it]!! }
+        val newColumnInfo = allowedFields.map { fieldNameToInfo.getValue(it) }
 
         val newSequence = dataset.rows.map { row ->
             allowedFields.map { row.getCell(it) }
@@ -200,59 +199,6 @@ private class DatasetRowExpressionCheck(private val datasetRow: DatasetRow) : Ba
                 // TODO: actually, SQL pattern matching is a great deal more complicated.
                 val regExValue = stringContent.replace("%", ".*").replace('%', '?')
                 Pattern.compile(regExValue).toRegex().matches(stringContent)
-            }
-        }
-    }
-}
-
-typealias IndexEvaluator = () -> Set<Long>
-
-private class DatasetIndexOffsetCollector(indexes: List<IndexDescriptionAndPath>) : BaseExpressionVisitor<IndexEvaluator?>() {
-
-    private val indexesMap = indexes.associateBy { it.description.fieldName }
-
-    override fun visitAtom(atom: ExpressionAtom): IndexEvaluator? {
-        if (atom.leftVal !is RefValue) {
-            throw IllegalStateException("Left value is expected to be reference")
-        }
-        val index = indexesMap[atom.leftVal.name]?.indexContent?.value ?: return null
-        val right = atom.rightVal
-        val op = atom.operator
-
-        return {
-            when {
-                op == Operator.LESS_THAN && right is SqlValueAtom -> index.lessThan(right)
-                op == Operator.LESS_EQ_THAN && right is SqlValueAtom -> index.lessThanEq(right)
-                op == Operator.GREATER_THAN && right is SqlValueAtom -> index.moreThan(right)
-                op == Operator.GREATER_EQ_THAN && right is SqlValueAtom -> index.moreThanEq(right)
-                op == Operator.EQ && right is SqlValueAtom -> index.eq(right)
-                op == Operator.IN && right is ListValue -> index.inRange(right)
-                else -> throw RuntimeException("Unable to exec op = $op")
-            }
-        }
-    }
-
-    override fun visitNode(node: ExpressionNode): IndexEvaluator? {
-        val leftResult: IndexEvaluator? = node.left.accept(this)
-        val rightResult: IndexEvaluator? = node.right.accept(this)
-
-        return when (node.operator) {
-            ExpressionOperator.AND -> when {
-                leftResult == null && rightResult != null -> rightResult
-                leftResult != null && rightResult == null -> leftResult
-                leftResult != null && rightResult != null -> {
-                    { leftResult.invoke().intersect(rightResult.invoke()) }
-                }
-                else -> null
-            }
-            ExpressionOperator.OR -> when {
-                leftResult == null && rightResult != null -> null
-                leftResult != null && rightResult == null -> null
-                leftResult != null && rightResult != null -> {
-                    val a: () -> Set<Long> = { leftResult.invoke().union(rightResult.invoke()) }
-                    a
-                }
-                else -> null
             }
         }
     }
