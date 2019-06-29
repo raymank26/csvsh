@@ -1,9 +1,9 @@
 package com.github.raymank26.csvsh.parser
 
 import com.github.raymank26.csvsh.SyntaxException
+import com.github.raymank26.csvsh.sql.SqlLexer
+import com.github.raymank26.csvsh.sql.SqlParser
 import com.github.raymank26.csvsh.util.CaseChangingCharStream
-import com.github.raymank26.sql.SqlLexer
-import com.github.raymank26.sql.SqlParser
 import org.antlr.v4.runtime.BaseErrorListener
 import org.antlr.v4.runtime.CharStreams
 import org.antlr.v4.runtime.CommonTokenStream

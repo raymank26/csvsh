@@ -3,8 +3,8 @@ package com.github.raymank26.csvsh.planner
 import com.github.raymank26.csvsh.AggSelectExpr
 import com.github.raymank26.csvsh.SelectFieldExpr
 import com.github.raymank26.csvsh.SelectStatementExpr
-import com.github.raymank26.sql.SqlBaseVisitor
-import com.github.raymank26.sql.SqlParser
+import com.github.raymank26.csvsh.sql.SqlBaseVisitor
+import com.github.raymank26.csvsh.sql.SqlParser
 
 class SqlSelectColumnVisitor : SqlBaseVisitor<SelectStatementExpr>() {
     override fun visitSelectColumnPlain(ctx: SqlParser.SelectColumnPlainContext): SelectStatementExpr {

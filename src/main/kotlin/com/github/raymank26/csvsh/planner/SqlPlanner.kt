@@ -6,7 +6,7 @@ import com.github.raymank26.csvsh.DatasetReaderFactory
 import com.github.raymank26.csvsh.SelectFieldExpr
 import com.github.raymank26.csvsh.SelectStatementExpr
 import com.github.raymank26.csvsh.index.IndexDescription
-import com.github.raymank26.sql.SqlParser
+import com.github.raymank26.csvsh.sql.SqlParser
 import java.nio.file.Paths
 
 /**

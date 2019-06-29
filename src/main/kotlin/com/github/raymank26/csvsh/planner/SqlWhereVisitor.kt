@@ -12,8 +12,8 @@ import com.github.raymank26.csvsh.RefValue
 import com.github.raymank26.csvsh.SqlValue
 import com.github.raymank26.csvsh.SqlValueAtom
 import com.github.raymank26.csvsh.StringValue
-import com.github.raymank26.sql.SqlBaseVisitor
-import com.github.raymank26.sql.SqlParser
+import com.github.raymank26.csvsh.sql.SqlBaseVisitor
+import com.github.raymank26.csvsh.sql.SqlParser
 
 class SqlWhereVisitor : SqlBaseVisitor<WherePlanDescription?>() {
 

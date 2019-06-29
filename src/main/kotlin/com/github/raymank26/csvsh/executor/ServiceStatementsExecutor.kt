@@ -10,7 +10,7 @@ import com.github.raymank26.csvsh.FilesystemDatasetReaderFactory
 import com.github.raymank26.csvsh.StringValue
 import com.github.raymank26.csvsh.file.FileSystem
 import com.github.raymank26.csvsh.index.IndexesManager
-import com.github.raymank26.sql.SqlParser
+import com.github.raymank26.csvsh.sql.SqlParser
 import java.nio.file.Path
 import java.nio.file.Paths
 

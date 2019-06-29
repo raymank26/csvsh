@@ -41,11 +41,11 @@ dependencies {
 }
 
 application {
-    mainClassName = "com.github.raymank26.AppKt"
+    mainClassName = "com.github.raymank26.csvsh.AppKt"
 }
 
 tasks.generateGrammarSource {
-    arguments = arguments + listOf("-visitor", "-long-messages", "-package", "com.github.raymank26.sql")
+    arguments = arguments + listOf("-visitor", "-long-messages", "-package", "com.github.raymank26.csvsh.sql")
 }
 
 //val compileKotlin: KotlinCompile by tasks
