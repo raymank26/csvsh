@@ -17,6 +17,7 @@ interface FieldSerializer {
     fun serialize(sqlValueAtom: SqlValueAtom): ByteBuffer
     fun deserialize(buffer: ByteBuffer): SqlValueAtom
     fun comparator(): Comparator<ByteBuffer>
+    fun fieldType(): FieldType
 }
 
 private val BYTE_BUFFER_LONG_CMP = Comparator<ByteBuffer> { o1, o2 ->
@@ -46,6 +47,10 @@ object LongSerializer : FieldSerializer {
     override fun comparator(): Comparator<ByteBuffer> {
         return BYTE_BUFFER_LONG_CMP
     }
+
+    override fun fieldType(): FieldType {
+        return FieldType.LONG
+    }
 }
 
 object StringSerializer : FieldSerializer {
@@ -68,6 +73,10 @@ object StringSerializer : FieldSerializer {
     override fun comparator(): Comparator<ByteBuffer> {
         return Ordering.natural()
     }
+
+    override fun fieldType(): FieldType {
+        return FieldType.STRING
+    }
 }
 
 object DoubleSerializer : FieldSerializer {
@@ -84,6 +93,10 @@ object DoubleSerializer : FieldSerializer {
 
     override fun comparator(): Comparator<ByteBuffer> {
         return BYTE_BUFFER_DOUBLE_CMP
+    }
+
+    override fun fieldType(): FieldType {
+        return FieldType.DOUBLE
     }
 }
 
@@ -106,15 +119,9 @@ class IndexesManager(private val fileSystem: FileSystem, private val offsetsBuil
         return fileSystem.getDB(indexFile).use { env ->
             var readDb: Env<ByteBuffer>? = null
             val result = mutableListOf<IndexDescriptionAndPath>()
-            for (name in env.dbiNames.map { it.toString(Charset.defaultCharset()) }) {
-                if (!name.contains("|")) {
-                    continue
-                }
-                val (indexName, fieldName, fieldTypeMark) = name.split("|")
+            for (index: IndexMeta in env.listIndexes()) {
+                val (name, fieldName, serializer) = index
 
-                val byteMark = fieldTypeMark.toByte()
-                val fieldType = FieldType.MARK_TO_FIELD_TYPE[byteMark]!!
-                val serializer = requireNotNull(INDEX_SERIALIZERS[fieldType])
                 val dbReader = lazy {
                     val newDb = if (readDb == null) {
                         readDb = fileSystem.getDB(indexFile)
@@ -122,10 +129,10 @@ class IndexesManager(private val fileSystem: FileSystem, private val offsetsBuil
                     } else {
                         readDb!!
                     }
-                    val dbi = newDb.openDbi(name, serializer.comparator(), DbiFlags.MDB_DUPSORT)
-                    MapDBReadonlyIndex(dbi, newDb, serializer, fieldType)
+                    val dbi = newDb.openDbi(index.dbiName, serializer.comparator(), DbiFlags.MDB_DUPSORT)
+                    MapDBReadonlyIndex(dbi, newDb, serializer)
                 }
-                result.add(IndexDescriptionAndPath(IndexDescription(indexName, fieldName), dbReader))
+                result.add(IndexDescriptionAndPath(IndexDescription(name, fieldName), dbReader))
             }
             result
         }
@@ -233,22 +240,13 @@ class IndexesManager(private val fileSystem: FileSystem, private val offsetsBuil
             throw PlannerException("Unable to locate index for table = $dataPath")
         }
         fileSystem.getDB(indexFile).use { env ->
-            for (name in env.dbiNames.map { it.toString(Charset.defaultCharset()) }) {
-                if (!name.contains("|")) {
+            for (indexMeta in env.listIndexes()) {
+                if (indexMeta.name != indexNameToDelete) {
                     continue
                 }
-                val (indexName, _, fieldTypeMark) = name.split("|")
-
-                if (indexName != indexNameToDelete) {
-                    continue
-                }
-
-                val byteMark = fieldTypeMark.toByte()
-                val fieldType = FieldType.MARK_TO_FIELD_TYPE[byteMark]!!
-                val serializer = requireNotNull(INDEX_SERIALIZERS[fieldType])
 
                 val indexContent = env
-                        .openDbi(name, serializer.comparator(), DbiFlags.MDB_DUPSORT)
+                        .openDbi(indexMeta.dbiName, indexMeta.serializer.comparator(), DbiFlags.MDB_DUPSORT)
 
                 env.txnWrite().use { tx ->
                     indexContent.drop(tx, true)
@@ -257,4 +255,31 @@ class IndexesManager(private val fileSystem: FileSystem, private val offsetsBuil
             }
         }
     }
+
+    fun listIndexes(dataPath: Path): List<IndexMeta> {
+        val indexFile: Path = getIndexPath(dataPath)
+        if (!fileSystem.isFileExists(indexFile)) {
+            throw PlannerException("Unable to locate index for table = $dataPath")
+        }
+        return fileSystem.getDB(indexFile).use { env ->
+            env.listIndexes()
+        }
+    }
 }
+
+private fun Env<ByteBuffer>.listIndexes(): List<IndexMeta> {
+    val res = mutableListOf<IndexMeta>()
+    for (name in this.dbiNames.map { it.toString(Charset.defaultCharset()) }) {
+        if (!name.contains("|")) {
+            continue
+        }
+        val (indexName, fieldName, fieldTypeMark) = name.split("|")
+        val byteMark = fieldTypeMark.toByte()
+        val fieldType = FieldType.MARK_TO_FIELD_TYPE[byteMark]
+        val serializer = requireNotNull(INDEX_SERIALIZERS[fieldType])
+        res.add(IndexMeta(indexName, fieldName, serializer, name))
+    }
+    return res
+}
+
+data class IndexMeta(val name: String, val fieldName: String, val serializer: FieldSerializer, val dbiName: String)

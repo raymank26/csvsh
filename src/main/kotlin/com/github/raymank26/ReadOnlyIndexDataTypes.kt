@@ -21,7 +21,7 @@ interface ReadOnlyIndex : AutoCloseable {
 class MapDBReadonlyIndex(private val dbi: Dbi<ByteBuffer>,
                          private val env: Env<ByteBuffer>,
                          private val serializer: FieldSerializer,
-                         override val type: FieldType) : ReadOnlyIndex {
+                         override val type: FieldType = serializer.fieldType()) : ReadOnlyIndex {
 
     override fun moreThan(from: SqlValueAtom): FoundOffsets {
         return collectOffsets(KeyRange.greaterThan(serializer.serialize(from)))

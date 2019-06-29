@@ -5,5 +5,6 @@ package com.github.raymank26
  */
 data class TableDescription(
         val columns: DatasetResult,
-        val sizeStatistics: DatasetResult
+        val sizeStatistics: DatasetResult,
+        val indexes: DatasetResult
 )

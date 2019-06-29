@@ -30,7 +30,18 @@ class ServiceStatementsExecutor(private val datasetMetadataProvider: DatasetMeta
                 ?: return null
         val columnsDataset = describeColumns(reader.columnInfo)
         val sizeStat = getAdditionalDataDescription(dataPath)
-        return TableDescription(columnsDataset, sizeStat)
+        val indexes = getIndexesDescription(dataPath)
+
+        return TableDescription(columnsDataset, sizeStat, indexes)
+    }
+
+    private fun getIndexesDescription(dataPath: Path): DatasetResult {
+        val indexes = indexesManager.listIndexes(dataPath)
+        val columnInfo = listOf(ColumnInfo(FieldType.STRING, "indexName"), ColumnInfo(FieldType.STRING, "fieldName"))
+        val rows = ClosableSequence(indexes.mapIndexed { i, it ->
+            DatasetRow(i, listOf(StringValue(it.name), StringValue(it.fieldName)), columnInfo, null)
+        }.asSequence(), null)
+        return DatasetResult(rows, columnInfo)
     }
 
     private fun getAdditionalDataDescription(dataPath: Path): DatasetResult {

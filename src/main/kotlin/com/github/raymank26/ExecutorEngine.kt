@@ -40,6 +40,8 @@ class ExecutorEngine {
                     CompositeResponse(listOf(
                             TextResponse("Columns:"),
                             DatasetResponse(description.columns),
+                            TextResponse("Indexes:"),
+                            DatasetResponse(description.indexes),
                             TextResponse("Sizes:"),
                             DatasetResponse(description.sizeStatistics)))
                 }

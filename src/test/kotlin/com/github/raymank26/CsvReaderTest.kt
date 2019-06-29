@@ -132,6 +132,8 @@ class CsvReaderTest {
         indexesManager.createIndex(dataPath, "aIndex", "a", readerFactory)
         indexesManager.createIndex(dataPath, "bIndex", "b", readerFactory)
         indexesManager.createIndex(dataPath, "cIndex", "c", readerFactory)
+        val indexes = indexesManager.listIndexes(dataPath)
+        assertEquals(3, indexes.size)
 
         val metadata = metadataProvider.getOrCreate(dataPath)
         assertEquals(
