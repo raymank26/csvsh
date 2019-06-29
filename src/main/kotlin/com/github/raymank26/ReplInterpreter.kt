@@ -1,5 +1,6 @@
 package com.github.raymank26
 
+import com.github.raymank26.planner.PlannerException
 import com.jakewharton.fliptables.FlipTable
 import org.jline.reader.EndOfFileException
 import org.jline.reader.LineReader

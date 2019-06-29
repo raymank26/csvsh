@@ -1,5 +1,6 @@
 package com.github.raymank26
 
+import com.github.raymank26.planner.SqlTestUtils
 import org.junit.Test
 
 /**

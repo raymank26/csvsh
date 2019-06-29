@@ -227,7 +227,6 @@ data class StringValue(val value: String?) : SqlValue(), SqlValueAtom {
 
 data class ListValue(val value: List<SqlValueAtom>) : SqlValue()
 
-class PlannerException(msg: String) : Exception(msg)
 class SyntaxException(msg: String) : Exception(msg)
 class ExecutorException(msg: String) : Exception(msg)
 
@@ -243,19 +242,3 @@ data class SelectFieldExpr(val fieldName: String) : SelectStatementExpr() {
     override val fullFieldName: String = fieldName
 }
 
-data class SqlPlan(
-        val selectStatements: List<SelectStatementExpr>,
-        val datasetReader: DatasetReader,
-        val wherePlanDescription: WherePlanDescription?,
-        val groupByFields: List<String>,
-        val orderByPlanDescription: OrderByPlanDescription?,
-        val limit: Int?,
-        val indexEvaluator: IndexEvaluator?
-)
-
-data class OrderByPlanDescription(
-        val field: SelectStatementExpr,
-        val desc: Boolean
-)
-
-data class WherePlanDescription(val expressionTree: Expression)

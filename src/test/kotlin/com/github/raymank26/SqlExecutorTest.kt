@@ -1,5 +1,7 @@
 package com.github.raymank26
 
+import com.github.raymank26.planner.SqlTestUtils
+import com.github.raymank26.planner.indexesManager
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.TemporaryFolder
