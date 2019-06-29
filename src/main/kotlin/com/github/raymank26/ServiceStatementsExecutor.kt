@@ -24,7 +24,7 @@ class ServiceStatementsExecutor(private val datasetMetadataProvider: DatasetMeta
         return FilesystemDatasetReaderFactory(datasetMetadataProvider, fileSystem, contentDataProvider)
     }
 
-    fun describeTable(ctx: SqlParser.DescribeContext, readerFactory: DatasetReaderFactory): TableDescription? {
+    fun describeTable(ctx: SqlParser.DescribeTableContext, readerFactory: DatasetReaderFactory): TableDescription? {
         val dataPath = Paths.get(ctx.table().IDENTIFIER_Q().text.drop(1).dropLast(1))
         val reader = readerFactory.getReader(dataPath)
                 ?: return null

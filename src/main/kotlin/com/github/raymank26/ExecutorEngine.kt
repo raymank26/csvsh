@@ -46,6 +46,10 @@ class ExecutorEngine {
                             DatasetResponse(description.sizeStatistics)))
                 }
             }
+            is DescribeSelect -> {
+                val planDescription = sqlPlanner.createPlan(parsedStatement.ctx.select(), datasetReaderFactory)
+                TextResponse(planDescription.toString())
+            }
             is SelectStatement -> {
                 val planDescriptor = sqlPlanner.createPlan(parsedStatement.ctx, datasetReaderFactory)
                 val result = sqlExecutor.execute(planDescriptor)

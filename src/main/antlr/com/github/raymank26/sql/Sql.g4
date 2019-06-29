@@ -6,13 +6,18 @@ parse
 
 statement
  : select
+ | describeSelect
  | createIndex
  | dropIndex
- | describe
+ | describeTable
  ;
 
 select
  : SELECT selectExpr FROM table (GROUP_BY groupByExpr)? (WHERE whereExpr)? (ORDER_BY orderByExpr)? (LIMIT limitExpr)?
+ ;
+
+describeSelect
+ : DESCRIBE select
  ;
 
 groupByExpr
@@ -83,7 +88,7 @@ dropIndex
  : DROP INDEX indexName ON table
  ;
 
-describe
+describeTable
  : DESCRIBE TABLE table
  ;
 
