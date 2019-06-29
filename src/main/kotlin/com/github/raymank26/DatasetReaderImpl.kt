@@ -1,5 +1,8 @@
 package com.github.raymank26
 
+import com.github.raymank26.executor.ContentDataProvider
+import com.github.raymank26.executor.ContentRow
+import com.github.raymank26.executor.DatasetMetadata
 import com.github.raymank26.file.Md5Hash
 import com.github.raymank26.file.NavigableReader
 import com.github.raymank26.index.IndexDescriptionAndPath

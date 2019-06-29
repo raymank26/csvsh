@@ -1,5 +1,8 @@
-package com.github.raymank26
+package com.github.raymank26.executor
 
+import com.github.raymank26.ClosableSequence
+import com.github.raymank26.ColumnInfo
+import com.github.raymank26.FieldType
 import com.github.raymank26.file.FileSystem
 import com.github.raymank26.file.Md5Hash
 import com.github.raymank26.file.Md5HashConverter

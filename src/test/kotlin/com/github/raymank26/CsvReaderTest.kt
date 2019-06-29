@@ -1,5 +1,6 @@
 package com.github.raymank26
 
+import com.github.raymank26.executor.DatasetMetadataProvider
 import com.github.raymank26.index.IndexDescription
 import com.github.raymank26.index.IndexesManager
 import com.github.raymank26.planner.dataProvider

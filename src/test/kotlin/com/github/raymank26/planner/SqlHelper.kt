@@ -1,11 +1,11 @@
 package com.github.raymank26.planner
 
-import com.github.raymank26.CsvContentDataProvider
-import com.github.raymank26.DatasetMetadataProvider
 import com.github.raymank26.DatasetReaderFactory
 import com.github.raymank26.DatasetResult
 import com.github.raymank26.FilesystemDatasetReaderFactory
 import com.github.raymank26.InMemoryFileSystem
+import com.github.raymank26.executor.CsvContentDataProvider
+import com.github.raymank26.executor.DatasetMetadataProvider
 import com.github.raymank26.executor.SqlExecutor
 import com.github.raymank26.index.FileOffsetsBuilder
 import com.github.raymank26.index.IndexesManager
