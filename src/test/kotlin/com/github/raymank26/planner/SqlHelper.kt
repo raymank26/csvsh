@@ -6,11 +6,11 @@ import com.github.raymank26.DatasetReaderFactory
 import com.github.raymank26.DatasetResult
 import com.github.raymank26.FilesystemDatasetReaderFactory
 import com.github.raymank26.InMemoryFileSystem
-import com.github.raymank26.SelectStatement
-import com.github.raymank26.SqlAstBuilder
-import com.github.raymank26.SqlExecutor
+import com.github.raymank26.executor.SqlExecutor
 import com.github.raymank26.index.FileOffsetsBuilder
 import com.github.raymank26.index.IndexesManager
+import com.github.raymank26.parser.SelectStatement
+import com.github.raymank26.parser.SqlAstBuilder
 import org.apache.commons.csv.CSVFormat
 import org.junit.After
 import java.nio.file.Files

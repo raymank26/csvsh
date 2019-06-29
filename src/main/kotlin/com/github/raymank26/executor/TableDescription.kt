@@ -1,4 +1,6 @@
-package com.github.raymank26
+package com.github.raymank26.executor
+
+import com.github.raymank26.DatasetResult
 
 /**
  * Date: 2019-06-22.

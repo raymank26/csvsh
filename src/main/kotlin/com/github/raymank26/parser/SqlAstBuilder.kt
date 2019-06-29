@@ -1,5 +1,6 @@
-package com.github.raymank26
+package com.github.raymank26.parser
 
+import com.github.raymank26.SyntaxException
 import com.github.raymank26.sql.SqlLexer
 import com.github.raymank26.sql.SqlParser
 import com.github.raymank26.util.CaseChangingCharStream

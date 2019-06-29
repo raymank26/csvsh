@@ -1,9 +1,19 @@
-package com.github.raymank26
+package com.github.raymank26.executor
 
+import com.github.raymank26.AggSelectExpr
+import com.github.raymank26.AggregateFunction
+import com.github.raymank26.AggregateFunctionFactory
+import com.github.raymank26.Aggregates
+import com.github.raymank26.ClosableSequence
+import com.github.raymank26.ColumnInfo
+import com.github.raymank26.DatasetResult
+import com.github.raymank26.DatasetRow
+import com.github.raymank26.FieldType
+import com.github.raymank26.SelectFieldExpr
+import com.github.raymank26.SqlValueAtom
 import com.github.raymank26.planner.OrderByPlanDescription
 import com.github.raymank26.planner.PlannerException
 import com.github.raymank26.planner.SqlPlan
-import java.util.regex.Pattern
 
 /**
  * Date: 2019-05-15.
@@ -32,7 +42,7 @@ class SqlExecutor {
 
     private fun applyWhere(sqlPlan: SqlPlan, dataset: DatasetResult): DatasetResult {
         return dataset.copy(rows = dataset.rows.filter { row ->
-            DatasetRowExpressionCheck(row).visitExpression(sqlPlan.wherePlanDescription!!.expressionTree)
+            WhereEvalVisitor(row).visitExpression(sqlPlan.wherePlanDescription!!.expressionTree)
         })
     }
 
@@ -171,38 +181,3 @@ val AGGREGATES_MAPPING: Map<Pair<String, FieldType>, AggregateFunctionFactory> =
         Pair(Pair("count", FieldType.STRING), Aggregates.COUNT_ANY)
 )
 
-private class DatasetRowExpressionCheck(private val datasetRow: DatasetRow) : BaseExpressionVisitor<Boolean>() {
-    override fun visitAtom(atom: ExpressionAtom): Boolean {
-        val fieldName = (atom.leftVal as RefValue).name
-        val columnValue = datasetRow.getCell(fieldName)
-        return checkAtom(atom, columnValue, atom.rightVal)
-    }
-
-    override fun visitNode(node: ExpressionNode): Boolean {
-        val leftResult = requireNotNull(node.left.accept(this), { "Left lines is null" })
-        val rightResult = requireNotNull(node.right.accept(this), { "Right lines is null" })
-
-        return when (node.operator) {
-            ExpressionOperator.AND -> leftResult && rightResult
-            ExpressionOperator.OR -> leftResult || rightResult
-        }
-    }
-
-    private fun checkAtom(atom: ExpressionAtom, fieldValue: SqlValueAtom, sqlValue: SqlValue): Boolean {
-        return when (atom.operator) {
-            Operator.LESS_THAN -> fieldValue lt (sqlValue as SqlValueAtom)
-            Operator.LESS_EQ_THAN -> fieldValue lte (sqlValue as SqlValueAtom)
-            Operator.GREATER_THAN -> fieldValue gt (sqlValue as SqlValueAtom)
-            Operator.GREATER_EQ_THAN -> fieldValue gte (sqlValue as SqlValueAtom)
-            Operator.EQ -> fieldValue eq (sqlValue as SqlValueAtom)
-            Operator.IN -> (sqlValue as ListValue).value.any { it eq fieldValue }
-            Operator.LIKE -> {
-                val stringContent = (sqlValue as StringValue).value
-                        ?: return false
-                // TODO: actually, SQL pattern matching is a great deal more complicated.
-                val regExValue = stringContent.replace("%", ".*").replace('%', '?')
-                Pattern.compile(regExValue).toRegex().matches(stringContent)
-            }
-        }
-    }
-}
