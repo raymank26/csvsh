@@ -4,12 +4,12 @@ import com.github.raymank26.BaseExpressionVisitor
 import com.github.raymank26.ExpressionAtom
 import com.github.raymank26.ExpressionNode
 import com.github.raymank26.ExpressionOperator
-import com.github.raymank26.IndexDescriptionAndPath
 import com.github.raymank26.ListValue
 import com.github.raymank26.Operator
-import com.github.raymank26.ReadOnlyIndex
 import com.github.raymank26.RefValue
 import com.github.raymank26.SqlValueAtom
+import com.github.raymank26.index.IndexDescriptionAndPath
+import com.github.raymank26.index.ReadOnlyIndex
 
 class DatasetIndexOffsetCollectorVisitor(indexes: List<IndexDescriptionAndPath>) : BaseExpressionVisitor<IndexEvaluator?>() {
 

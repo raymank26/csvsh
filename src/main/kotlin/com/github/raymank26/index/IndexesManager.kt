@@ -1,5 +1,15 @@
-package com.github.raymank26
+package com.github.raymank26.index
 
+import com.github.raymank26.ColumnInfo
+import com.github.raymank26.DatasetOffset
+import com.github.raymank26.DatasetReader
+import com.github.raymank26.DatasetReaderFactory
+import com.github.raymank26.DoubleValue
+import com.github.raymank26.ExecutorException
+import com.github.raymank26.FieldType
+import com.github.raymank26.LongValue
+import com.github.raymank26.SqlValueAtom
+import com.github.raymank26.StringValue
 import com.github.raymank26.file.FileSystem
 import com.github.raymank26.file.getFilenameWithoutExtension
 import com.github.raymank26.planner.PlannerException
@@ -131,7 +141,7 @@ class IndexesManager(private val fileSystem: FileSystem, private val offsetsBuil
                         readDb!!
                     }
                     val dbi = newDb.openDbi(index.dbiName, serializer.comparator(), DbiFlags.MDB_DUPSORT)
-                    MapDBReadonlyIndex(dbi, newDb, serializer)
+                    LmdbReadonlyIndex(dbi, newDb, serializer)
                 }
                 result.add(IndexDescriptionAndPath(IndexDescription(name, fieldName), dbReader))
             }

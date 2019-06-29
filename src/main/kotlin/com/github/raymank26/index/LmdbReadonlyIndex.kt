@@ -1,27 +1,17 @@
-package com.github.raymank26
+package com.github.raymank26.index
 
+import com.github.raymank26.FieldType
+import com.github.raymank26.ListValue
+import com.github.raymank26.SqlValueAtom
 import org.lmdbjava.Dbi
 import org.lmdbjava.Env
 import org.lmdbjava.KeyRange
 import java.nio.ByteBuffer
 
-typealias FoundOffsets = Set<Long>
-
-interface ReadOnlyIndex : AutoCloseable {
-    val type: FieldType
-
-    fun moreThan(from: SqlValueAtom): FoundOffsets
-    fun moreThanEq(fromInclusive: SqlValueAtom): FoundOffsets
-    fun lessThan(to: SqlValueAtom): FoundOffsets
-    fun lessThanEq(toInclusive: SqlValueAtom): FoundOffsets
-    fun eq(value: SqlValueAtom): FoundOffsets
-    fun inRange(list: ListValue): FoundOffsets
-}
-
-class MapDBReadonlyIndex(private val dbi: Dbi<ByteBuffer>,
-                         private val env: Env<ByteBuffer>,
-                         private val serializer: FieldSerializer,
-                         override val type: FieldType = serializer.fieldType()) : ReadOnlyIndex {
+class LmdbReadonlyIndex(private val dbi: Dbi<ByteBuffer>,
+                        private val env: Env<ByteBuffer>,
+                        private val serializer: FieldSerializer,
+                        override val type: FieldType = serializer.fieldType()) : ReadOnlyIndex {
 
     override fun moreThan(from: SqlValueAtom): FoundOffsets {
         return collectOffsets(KeyRange.greaterThan(serializer.serialize(from)))

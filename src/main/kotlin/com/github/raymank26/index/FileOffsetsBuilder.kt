@@ -1,5 +1,6 @@
-package com.github.raymank26
+package com.github.raymank26.index
 
+import com.github.raymank26.DatasetOffset
 import com.github.raymank26.file.NavigableReader
 import java.nio.charset.Charset
 

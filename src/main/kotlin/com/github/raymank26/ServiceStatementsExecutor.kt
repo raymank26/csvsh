@@ -1,6 +1,7 @@
 package com.github.raymank26
 
 import com.github.raymank26.file.FileSystem
+import com.github.raymank26.index.IndexesManager
 import com.github.raymank26.sql.SqlParser
 import java.nio.file.Path
 import java.nio.file.Paths

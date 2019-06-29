@@ -2,6 +2,7 @@ package com.github.raymank26
 
 import com.github.raymank26.file.Md5Hash
 import com.github.raymank26.file.NavigableReader
+import com.github.raymank26.index.IndexDescriptionAndPath
 
 class DatasetReaderImpl(private val contentDataProvider: ContentDataProvider,
                         private val readerFactory: () -> NavigableReader,

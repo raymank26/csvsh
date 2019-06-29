@@ -4,13 +4,13 @@ import com.github.raymank26.CsvContentDataProvider
 import com.github.raymank26.DatasetMetadataProvider
 import com.github.raymank26.DatasetReaderFactory
 import com.github.raymank26.DatasetResult
-import com.github.raymank26.FileOffsetsBuilder
 import com.github.raymank26.FilesystemDatasetReaderFactory
 import com.github.raymank26.InMemoryFileSystem
-import com.github.raymank26.IndexesManager
 import com.github.raymank26.SelectStatement
 import com.github.raymank26.SqlAstBuilder
 import com.github.raymank26.SqlExecutor
+import com.github.raymank26.index.FileOffsetsBuilder
+import com.github.raymank26.index.IndexesManager
 import org.apache.commons.csv.CSVFormat
 import org.junit.After
 import java.nio.file.Files

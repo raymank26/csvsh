@@ -5,6 +5,8 @@ import com.github.raymank26.file.Md5Hash
 import com.github.raymank26.file.Md5HashConverter
 import com.github.raymank26.file.NavigableReader
 import com.github.raymank26.file.getFilenameWithoutExtension
+import com.github.raymank26.index.IndexDescriptionAndPath
+import com.github.raymank26.index.IndexesManager
 import org.apache.commons.csv.CSVFormat
 import org.apache.commons.csv.CSVParser
 import org.apache.commons.csv.CSVRecord

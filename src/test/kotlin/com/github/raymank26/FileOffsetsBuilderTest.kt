@@ -1,5 +1,6 @@
 package com.github.raymank26
 
+import com.github.raymank26.index.FileOffsetsBuilder
 import com.github.raymank26.planner.dataProvider
 import java.nio.file.Paths
 import kotlin.test.Test

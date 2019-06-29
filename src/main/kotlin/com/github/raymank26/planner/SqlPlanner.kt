@@ -3,9 +3,9 @@ package com.github.raymank26.planner
 import com.github.raymank26.AggSelectExpr
 import com.github.raymank26.DatasetReader
 import com.github.raymank26.DatasetReaderFactory
-import com.github.raymank26.IndexDescription
 import com.github.raymank26.SelectFieldExpr
 import com.github.raymank26.SelectStatementExpr
+import com.github.raymank26.index.IndexDescription
 import com.github.raymank26.sql.SqlParser
 import java.nio.file.Paths
 

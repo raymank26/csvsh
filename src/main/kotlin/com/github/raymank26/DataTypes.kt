@@ -1,12 +1,5 @@
 package com.github.raymank26
 
-/**
- * Date: 2019-05-13.
- */
-data class IndexDescription(val name: String, val fieldName: String)
-
-data class IndexDescriptionAndPath(val description: IndexDescription, val indexContent: Lazy<ReadOnlyIndex>)
-
 enum class FieldType(val mark: Byte) {
     LONG(1),
     DOUBLE(2),
