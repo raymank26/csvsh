@@ -11,7 +11,7 @@ import com.github.raymank26.ReadOnlyIndex
 import com.github.raymank26.RefValue
 import com.github.raymank26.SqlValueAtom
 
-class DatasetIndexOffsetCollector(indexes: List<IndexDescriptionAndPath>) : BaseExpressionVisitor<IndexEvaluator?>() {
+class DatasetIndexOffsetCollectorVisitor(indexes: List<IndexDescriptionAndPath>) : BaseExpressionVisitor<IndexEvaluator?>() {
 
     private val indexesMap = indexes.associateBy { it.description.fieldName }
 

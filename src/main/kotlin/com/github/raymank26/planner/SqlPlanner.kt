@@ -20,7 +20,7 @@ class SqlPlanner {
                 ?: throw PlannerException("Unable to find input for path = $tablePath")
         val sqlWherePlan = sqlAst.whereExpr()?.let { SqlWhereVisitor().visit(it) }
         val indexEvaluator = if (sqlWherePlan != null) {
-            DatasetIndexOffsetCollector(reader.availableIndexes)
+            DatasetIndexOffsetCollectorVisitor(reader.availableIndexes)
                     .visitExpression(sqlWherePlan.expressionTree)
         } else null
 
