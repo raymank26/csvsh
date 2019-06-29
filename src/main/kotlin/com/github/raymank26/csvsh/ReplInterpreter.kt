@@ -1,0 +1,84 @@
+package com.github.raymank26.csvsh
+
+import com.github.raymank26.csvsh.planner.PlannerException
+import com.jakewharton.fliptables.FlipTable
+import org.jline.reader.EndOfFileException
+import org.jline.reader.LineReader
+import org.jline.reader.LineReaderBuilder
+import org.jline.reader.UserInterruptException
+import org.jline.reader.impl.DefaultParser
+import org.jline.reader.impl.completer.StringsCompleter
+import org.jline.reader.impl.history.DefaultHistory
+import org.jline.terminal.TerminalBuilder
+import java.io.PrintWriter
+import java.nio.file.Paths
+
+/**
+ * Date: 2019-05-17.
+ */
+class ReplInterpreter {
+
+    fun run() {
+        val engine = ExecutorEngine()
+        val terminal = TerminalBuilder.builder()
+                .build()
+        val outputWriter = terminal.writer()
+        val lineReader = LineReaderBuilder.builder()
+                .terminal(terminal)
+                .variable(LineReader.HISTORY_FILE, Paths.get(System.getProperty("user.home"), ".csvsh_history"))
+                .history(DefaultHistory())
+                .completer(StringsCompleter("SELECT", "DESCRIBE", "FROM", "WHERE", "ORDER BY", "LIMIT", "CREATE", "INDEX"))
+                .parser(DefaultParser())
+                .build()
+        while (true) {
+            val line = try {
+                lineReader.readLine("csvsh>> ")
+            } catch (e: EndOfFileException) {
+                return
+            } catch (e: UserInterruptException) {
+                continue
+            }?.trim()
+            if (line.isNullOrBlank()) {
+                continue
+            }
+
+            try {
+                processResponse(engine.execute(line), outputWriter)
+            } catch (e: PlannerException) {
+                outputWriter.println("Unable to build plan: ${e.message}")
+            } catch (e: ExecutorException) {
+                outputWriter.println("Unable to execute statement: ${e.message}")
+            } catch (e: SyntaxException) {
+                outputWriter.println("Syntax exception: ${e.message}")
+            }
+        }
+    }
+
+    private fun processResponse(response: ExecutorResponse, outputWriter: PrintWriter) {
+        when (response) {
+            is DatasetResponse -> outputWriter.println(prettifyDataset(response.value))
+            is TextResponse -> outputWriter.println(response.value)
+            is VoidResponse -> Unit
+            is CompositeResponse -> response.parts.forEach { processResponse(it, outputWriter) }
+        }
+    }
+}
+
+fun prettifyDataset(dataset: DatasetResult): String {
+    val header = dataset.columnInfo.map { it.fieldName }.toTypedArray()
+    val rowsLimit = 20
+    var rows = dataset.rows.map { row ->
+        row.columns.map { col ->
+            col.toText()
+        }.toTypedArray()
+    }.take(rowsLimit + 1).toList()
+
+
+    val overflow = rows.size == rowsLimit + 1
+    if (overflow) {
+        rows = rows.dropLast(1)
+    }
+
+    return FlipTable.of(header, rows.toList().toTypedArray()) +
+            if (overflow) "Shown only first $rowsLimit rows." else ""
+}
