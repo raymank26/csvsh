@@ -3,6 +3,11 @@
  */
 package com.github.raymank26.csvsh
 
+import org.slf4j.LoggerFactory
+
+private val LOG = LoggerFactory.getLogger("App")
+
 fun main(args: Array<String>) {
+    LOG.info("Application has started")
     ReplInterpreter().run()
 }

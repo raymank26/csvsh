@@ -49,7 +49,6 @@ class SqlExecutor {
     private fun readDataset(sqlPlan: SqlPlan): DatasetResult {
         val newSequence = if (sqlPlan.wherePlanDescription != null) {
             val offsets = sqlPlan.indexEvaluator?.offsets?.invoke()
-            println(offsets?.size ?: "empty")
 
             if (offsets == null) {
                 sqlPlan.datasetReader.getIterator()
