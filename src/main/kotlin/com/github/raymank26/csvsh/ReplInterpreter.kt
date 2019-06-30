@@ -10,8 +10,12 @@ import org.jline.reader.impl.DefaultParser
 import org.jline.reader.impl.completer.StringsCompleter
 import org.jline.reader.impl.history.DefaultHistory
 import org.jline.terminal.TerminalBuilder
+import org.slf4j.LoggerFactory
 import java.io.PrintWriter
 import java.nio.file.Paths
+import java.util.concurrent.TimeUnit
+
+private val LOG = LoggerFactory.getLogger(ReplInterpreter::class.java)
 
 /**
  * Date: 2019-05-17.
@@ -43,7 +47,9 @@ class ReplInterpreter {
             }
 
             try {
+                val startTime = System.nanoTime()
                 processResponse(engine.execute(line), outputWriter)
+                LOG.info("Command execution completed in ${TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - startTime)}ms.")
             } catch (e: PlannerException) {
                 outputWriter.println("Unable to build plan: ${e.message}")
             } catch (e: ExecutorException) {

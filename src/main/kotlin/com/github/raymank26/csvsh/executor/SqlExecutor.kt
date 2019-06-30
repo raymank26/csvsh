@@ -14,6 +14,10 @@ import com.github.raymank26.csvsh.SqlValueAtom
 import com.github.raymank26.csvsh.planner.OrderByPlanDescription
 import com.github.raymank26.csvsh.planner.PlannerException
 import com.github.raymank26.csvsh.planner.SqlPlan
+import org.slf4j.LoggerFactory
+import java.util.concurrent.TimeUnit
+
+private val LOG = LoggerFactory.getLogger(SqlExecutor::class.java)
 
 /**
  * Date: 2019-05-15.
@@ -21,6 +25,7 @@ import com.github.raymank26.csvsh.planner.SqlPlan
 class SqlExecutor {
 
     fun execute(sqlPlan: SqlPlan): DatasetResult {
+        val startTime = System.nanoTime()
         var dataset = readDataset(sqlPlan)
 
         if (sqlPlan.wherePlanDescription != null) {
@@ -37,6 +42,7 @@ class SqlExecutor {
         if (sqlPlan.limit != null) {
             dataset = applyLimit(sqlPlan.limit, dataset)
         }
+        LOG.info("Execution completed in ${TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - startTime)}ms.")
         return dataset
     }
 

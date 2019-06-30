@@ -7,7 +7,11 @@ import com.github.raymank26.csvsh.SelectFieldExpr
 import com.github.raymank26.csvsh.SelectStatementExpr
 import com.github.raymank26.csvsh.index.IndexDescription
 import com.github.raymank26.csvsh.sql.SqlParser
+import org.slf4j.LoggerFactory
 import java.nio.file.Paths
+import java.util.concurrent.TimeUnit
+
+private val LOG = LoggerFactory.getLogger(SqlPlanner::class.java)
 
 /**
  * Date: 2019-05-13.
@@ -15,6 +19,7 @@ import java.nio.file.Paths
 class SqlPlanner {
 
     fun createPlan(sqlAst: SqlParser.SelectContext, datasetReaderFactory: DatasetReaderFactory): SqlPlan {
+        val startTime = System.nanoTime();
         val tablePath = Paths.get(sqlAst.table().IDENTIFIER_Q().text.drop(1).dropLast(1))
         val reader = datasetReaderFactory.getReader(tablePath)
                 ?: throw PlannerException("Unable to find input for path = $tablePath")
@@ -45,6 +50,7 @@ class SqlPlanner {
                 throw PlannerException("Limit statement has to be > 0")
             }
         }
+        LOG.debug("Planning completed in ${TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - startTime)}ms.")
         return SqlPlan(selectStatements, reader, sqlWherePlan, groupByFields, orderBy, limit, indexEvaluator)
     }
 
