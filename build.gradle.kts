@@ -31,6 +31,8 @@ dependencies {
 
     implementation("org.fusesource.jansi:jansi:1.18")
 
+    implementation("com.github.ajalt:clikt:2.0.0")
+
     testImplementation("org.jetbrains.kotlin:kotlin-test")
 
     testImplementation("org.jetbrains.kotlin:kotlin-test-junit")

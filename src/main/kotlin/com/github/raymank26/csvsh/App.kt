@@ -3,11 +3,31 @@
  */
 package com.github.raymank26.csvsh
 
+import com.github.ajalt.clikt.core.CliktCommand
+import com.github.ajalt.clikt.parameters.options.option
 import org.slf4j.LoggerFactory
+import java.io.PrintWriter
+import java.io.StringWriter
 
 private val LOG = LoggerFactory.getLogger("App")
 
 fun main(args: Array<String>) {
     LOG.info("Application has started")
-    ReplInterpreter().run()
+    Cmd().main(args)
+}
+
+class Cmd : CliktCommand() {
+
+    private val cmd: String? by option("-c", "--cmd", help = "SQL statement to run")
+
+    override fun run() {
+        val command = cmd
+        if (command == null) {
+            ReplInterpreter().runLoop()
+        } else {
+            val stringWriter = StringWriter()
+            ReplInterpreter().runOnce(command, PrintWriter(stringWriter))
+            echo(stringWriter.toString(), trailingNewline = false)
+        }
+    }
 }

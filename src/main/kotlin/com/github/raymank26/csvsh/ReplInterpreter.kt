@@ -22,8 +22,13 @@ private val LOG = LoggerFactory.getLogger(ReplInterpreter::class.java)
  */
 class ReplInterpreter {
 
-    fun run() {
-        val engine = ExecutorEngine()
+    private val engine = ExecutorEngine()
+
+    fun runOnce(cmd: String, outputWriter: PrintWriter) {
+        execute(cmd, outputWriter)
+    }
+
+    fun runLoop() {
         val terminal = TerminalBuilder.builder()
                 .build()
         val outputWriter = terminal.writer()
@@ -46,23 +51,27 @@ class ReplInterpreter {
                 continue
             }
 
-            try {
-                val startTime = System.nanoTime()
-                processResponse(engine.execute(line), outputWriter)
-                LOG.info("Command execution completed in ${TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - startTime)}ms.")
-            } catch (e: PlannerException) {
-                outputWriter.println("Unable to build plan: ${e.message}")
-            } catch (e: ExecutorException) {
-                outputWriter.println("Unable to execute statement: ${e.message}")
-            } catch (e: SyntaxException) {
-                outputWriter.println("Syntax exception: ${e.message}")
-            }
+            execute(line, outputWriter)
+        }
+    }
+
+    private fun execute(line: String, outputWriter: PrintWriter) {
+        try {
+            val startTime = System.nanoTime()
+            processResponse(engine.execute(line), outputWriter)
+            LOG.info("Command execution completed in ${TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - startTime)}ms.")
+        } catch (e: PlannerException) {
+            outputWriter.println("Unable to build plan: ${e.message}")
+        } catch (e: ExecutorException) {
+            outputWriter.println("Unable to execute statement: ${e.message}")
+        } catch (e: SyntaxException) {
+            outputWriter.println("Syntax exception: ${e.message}")
         }
     }
 
     private fun processResponse(response: ExecutorResponse, outputWriter: PrintWriter) {
         when (response) {
-            is DatasetResponse -> outputWriter.println(prettifyDataset(response.value))
+            is DatasetResponse -> outputWriter.print(prettifyDataset(response.value))
             is TextResponse -> outputWriter.println(response.value)
             is VoidResponse -> Unit
             is CompositeResponse -> response.parts.forEach { processResponse(it, outputWriter) }
