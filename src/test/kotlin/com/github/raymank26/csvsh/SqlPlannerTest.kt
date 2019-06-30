@@ -73,6 +73,13 @@ class SqlPlannerTest : SqlTestUtils() {
         testPlannerFailure { makePlan("SELECT * FROM '/test/input.csv' GROUP BY a") }
     }
 
+    @Test
+    fun testIndexNotUsedIfNegative() {
+        indexesManager.createIndex(dataPath, "aIndex", "a", readerFactory)
+        val plan = makePlan("SELECT * from '/test/input.csv' WHERE a <> 'b'")
+        assertEquals(null, plan.indexEvaluator)
+    }
+
     private fun testPlannerFailure(r: () -> Unit) {
         testFailure(PlannerException::class.java) { r() }
     }

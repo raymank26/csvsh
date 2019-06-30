@@ -8,4 +8,6 @@ package com.github.raymank26.csvsh.index
  */
 data class IndexDescription(val name: String, val fieldName: String)
 
-data class IndexDescriptionAndPath(val description: IndexDescription, val indexContent: Lazy<ReadOnlyIndex>)typealias FoundOffsets = Set<Long>
+data class IndexDescriptionAndPath(val description: IndexDescription, val indexContent: Lazy<ReadOnlyIndex>)
+
+typealias FoundOffsets = Set<Long>

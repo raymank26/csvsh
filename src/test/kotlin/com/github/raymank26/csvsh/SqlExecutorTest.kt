@@ -32,9 +32,29 @@ class SqlExecutorTest : SqlTestUtils() {
 
     @Test
     fun testLike() {
-        val dataset = executeSelect("SELECT * FROM '/test/input.csv' WHERE a LIKE '%ba%' AND c < 3.2 AND b <= 2", getDefaultDatasetFactory())
+        val dataset = executeSelect("SELECT * FROM '/test/input.csv' WHERE a LIKE '%ba%' AND c < 3.2 AND b <= 2",
+                getDefaultDatasetFactory())
         val datasetList = dataset.rows.toList()
         assertEquals(3, datasetList.size)
+        println(prettifyDataset(dataset.copy(ClosableSequence(datasetList.asSequence()))))
+    }
+
+    @Test
+    fun testIn() {
+        val dataset = executeSelect("SELECT * FROM '/test/input.csv' WHERE a IN ('bazz', 'баз') AND c IN (-1.0) AND b NOT IN (2)",
+                getDefaultDatasetFactory())
+        val datasetList = dataset.rows.toList()
+        assertEquals(1, datasetList.size)
+        assertEquals(listOf(StringValue("bazz"), LongValue(null), DoubleValue(-1.0)), datasetList.first().columns)
+        println(prettifyDataset(dataset.copy(ClosableSequence(datasetList.asSequence()))))
+    }
+
+    @Test
+    fun testNotLike() {
+        val dataset = executeSelect("SELECT * FROM '/test/input.csv' WHERE a NOT LIKE 'bazz' AND a NOT LIKE 'баз'",
+                getDefaultDatasetFactory())
+        val datasetList = dataset.rows.toList()
+        assertEquals(4, datasetList.size)
         println(prettifyDataset(dataset.copy(ClosableSequence(datasetList.asSequence()))))
     }
 
@@ -50,7 +70,6 @@ class SqlExecutorTest : SqlTestUtils() {
         val datasetList = dataset.rows.toList()
         assertEquals(3, datasetList.size)
         println(prettifyDataset(dataset.copy(ClosableSequence(datasetList.asSequence()))))
-
     }
 
     @Test

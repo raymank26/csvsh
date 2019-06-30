@@ -30,11 +30,9 @@ class SqlWhereVisitor : SqlBaseVisitor<WherePlanDescription?>() {
             operator = when (operator) {
                 Operator.LESS_THAN -> Operator.GREATER_THAN
                 Operator.GREATER_THAN -> Operator.LESS_THAN
-                Operator.LIKE -> Operator.LIKE
-                Operator.IN -> Operator.IN
-                Operator.EQ -> Operator.EQ
                 Operator.LESS_EQ_THAN -> Operator.GREATER_EQ_THAN
                 Operator.GREATER_EQ_THAN -> Operator.LESS_EQ_THAN
+                else -> operator
             }
         } else if (right is RefValue && left is RefValue) {
             throw PlannerException("Ref values on both sides are not supported yet")
@@ -43,6 +41,8 @@ class SqlWhereVisitor : SqlBaseVisitor<WherePlanDescription?>() {
     }
 
     override fun visitWhereExprIn(ctx: SqlParser.WhereExprInContext): WherePlanDescription {
+        val operator = Operator.TOKEN_TO_OPERATOR[ctx.BOOL_COMP_IN().text]
+                ?: throw RuntimeException("Unable to parse operator ${ctx.BOOL_COMP_IN().text}")
         val field: RefValue = parseVariable(ctx.variable(0)) as? RefValue
                 ?: throw PlannerException("Left variable has to be table field")
 
@@ -59,7 +59,7 @@ class SqlWhereVisitor : SqlBaseVisitor<WherePlanDescription?>() {
             }
             variables.add(parsedVariable)
         }
-        val atom = ExpressionAtom(field, Operator.IN, ListValue(variables))
+        val atom = ExpressionAtom(field, operator, ListValue(variables))
         return WherePlanDescription(atom)
     }
 

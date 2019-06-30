@@ -73,11 +73,11 @@ string
  ;
 
 integerNumber
- : (UNARY_MINUS)? INTEGER
+ : INTEGER
  ;
 
 floatNumber
- : (UNARY_MINUS)? FLOAT
+ : FLOAT
  ;
 
 createIndex
@@ -98,6 +98,7 @@ indexName
 
 INTEGER
  : [0-9]+
+ | '-' INTEGER
  ;
 
 fragment EXPONENT : ('e'|'E') ('+'|'-')? ('0'..'9')+ ;
@@ -106,10 +107,7 @@ FLOAT
  :   ('0'..'9')+ '.' ('0'..'9')* EXPONENT?
  |   '.' ('0'..'9')+ EXPONENT?
  |   ('0'..'9')+ EXPONENT
- ;
-
-UNARY_MINUS
- : '-'
+ | '-' FLOAT
  ;
 
 ON
@@ -137,7 +135,7 @@ STAR
  ;
 
 BOOL_COMP
- : '<' | '<=' | '>' | '>=' | '<>' | 'LIKE' | '='
+ : '<' | '<=' | '>' | '>=' | '<>' | 'LIKE' | '=' | 'NOT LIKE'
  ;
 
 AGG
@@ -205,7 +203,7 @@ IDENTIFIER_Q
  ;
 
 IDENTIFIER
- : [A-Z0-9a-z./*%_\-]+
+ : [A-Z0-9a-zА-Яа-я./*%_\-]+
  ;
 
 WHITESPACE : [ \n] -> skip ;

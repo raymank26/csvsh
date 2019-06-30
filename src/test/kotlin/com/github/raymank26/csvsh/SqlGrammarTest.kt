@@ -33,6 +33,11 @@ class SqlGrammarTest : SqlTestUtils() {
     }
 
     @Test
+    fun testDescribeSelectNegative() {
+        testParser("SELECT * FROM 'a' WHERE (a NOT IN (1,2,3) AND 5 <> 5) OR 4 <> 4 OR b NOT LIKE 'foo'")
+    }
+
+    @Test
     fun testCreateIndex() {
         testParser("CREATE INDEX FOO ON 'foo' (a)")
     }
@@ -51,6 +56,13 @@ class SqlGrammarTest : SqlTestUtils() {
     fun testFailure() {
         testFailure {
             testParser("select a")
+        }
+    }
+
+    @Test
+    fun testFailureUnrecognizedToken() {
+        testFailure {
+            testParser("SELECT * FROM 'a' WHERE round = 'seed' AND state != 'CA'")
         }
     }
 

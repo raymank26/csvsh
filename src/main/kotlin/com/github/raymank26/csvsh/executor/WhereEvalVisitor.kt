@@ -6,7 +6,16 @@ import com.github.raymank26.csvsh.ExpressionAtom
 import com.github.raymank26.csvsh.ExpressionNode
 import com.github.raymank26.csvsh.ExpressionOperator
 import com.github.raymank26.csvsh.ListValue
-import com.github.raymank26.csvsh.Operator
+import com.github.raymank26.csvsh.Operator.EQ
+import com.github.raymank26.csvsh.Operator.GREATER_EQ_THAN
+import com.github.raymank26.csvsh.Operator.GREATER_THAN
+import com.github.raymank26.csvsh.Operator.IN
+import com.github.raymank26.csvsh.Operator.LESS_EQ_THAN
+import com.github.raymank26.csvsh.Operator.LESS_THAN
+import com.github.raymank26.csvsh.Operator.LIKE
+import com.github.raymank26.csvsh.Operator.NOT_EQ
+import com.github.raymank26.csvsh.Operator.NOT_IN
+import com.github.raymank26.csvsh.Operator.NOT_LIKE
 import com.github.raymank26.csvsh.RefValue
 import com.github.raymank26.csvsh.SqlValue
 import com.github.raymank26.csvsh.SqlValueAtom
@@ -35,21 +44,29 @@ class WhereEvalVisitor(private val datasetRow: DatasetRow) : BaseExpressionVisit
         }
     }
 
-    private fun checkAtom(atom: ExpressionAtom, fieldValue: SqlValueAtom, sqlValue: SqlValue): Boolean {
+    private fun checkAtom(atom: ExpressionAtom, dataColumn: SqlValueAtom, sqlValue: SqlValue): Boolean {
         return when (atom.operator) {
-            Operator.LESS_THAN -> fieldValue lt (sqlValue as SqlValueAtom)
-            Operator.LESS_EQ_THAN -> fieldValue lte (sqlValue as SqlValueAtom)
-            Operator.GREATER_THAN -> fieldValue gt (sqlValue as SqlValueAtom)
-            Operator.GREATER_EQ_THAN -> fieldValue gte (sqlValue as SqlValueAtom)
-            Operator.EQ -> fieldValue eq (sqlValue as SqlValueAtom)
-            Operator.IN -> (sqlValue as ListValue).value.any { it eq fieldValue }
-            Operator.LIKE -> {
-                val stringContent = (sqlValue as StringValue).value
-                        ?: return false
-                // TODO: actually, SQL pattern matching is a great deal more complicated.
-                val regExValue = stringContent.replace("%", ".*").replace('%', '?')
-                Pattern.compile(regExValue).toRegex().matches(stringContent)
-            }
+            LESS_THAN -> dataColumn lt (sqlValue as SqlValueAtom)
+            LESS_EQ_THAN -> dataColumn lte (sqlValue as SqlValueAtom)
+            GREATER_THAN -> dataColumn gt (sqlValue as SqlValueAtom)
+            GREATER_EQ_THAN -> dataColumn gte (sqlValue as SqlValueAtom)
+            EQ -> dataColumn eq (sqlValue as SqlValueAtom)
+            IN -> checkIn(dataColumn, sqlValue)
+            NOT_IN -> !checkIn(dataColumn, sqlValue)
+            LIKE -> checkLike(dataColumn, sqlValue)
+            NOT_LIKE -> !checkLike(dataColumn, sqlValue)
+            NOT_EQ -> !(dataColumn eq (sqlValue as SqlValueAtom))
         }
+    }
+
+    private fun checkIn(dataColumn: SqlValueAtom, sqlValue: SqlValue) =
+            (sqlValue as ListValue).value.any { it eq dataColumn }
+
+    private fun checkLike(dataColumn: SqlValueAtom, sqlValue: SqlValue): Boolean {
+        val stringContent = (dataColumn as StringValue).value
+                ?: return false
+        // TODO: actually, SQL pattern matching is a great deal more complicated.
+        val regExValue = (sqlValue as StringValue).value!!.replace("%", ".*").replace('%', '?')
+        return Pattern.compile(regExValue).toRegex().matches(stringContent)
     }
 }

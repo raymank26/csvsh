@@ -17,8 +17,11 @@ enum class Operator(val token: String) {
     GREATER_THAN(">"),
     GREATER_EQ_THAN(">="),
     LIKE("LIKE"),
+    NOT_LIKE("NOT LIKE"),
     IN("IN"),
-    EQ("=")
+    NOT_IN("NOT IN"),
+    EQ("="),
+    NOT_EQ("<>")
     ;
 
     companion object {

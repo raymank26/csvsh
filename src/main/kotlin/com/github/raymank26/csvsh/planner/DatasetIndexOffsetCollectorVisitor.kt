@@ -8,6 +8,7 @@ import com.github.raymank26.csvsh.ListValue
 import com.github.raymank26.csvsh.Operator
 import com.github.raymank26.csvsh.RefValue
 import com.github.raymank26.csvsh.SqlValueAtom
+import com.github.raymank26.csvsh.index.FoundOffsets
 import com.github.raymank26.csvsh.index.IndexDescriptionAndPath
 import com.github.raymank26.csvsh.index.ReadOnlyIndex
 
@@ -25,18 +26,34 @@ class DatasetIndexOffsetCollectorVisitor(indexes: List<IndexDescriptionAndPath>)
         val right = atom.rightVal
         val op = atom.operator
 
-        val lazyOffsets = {
+        val lazyOffsets: (() -> FoundOffsets)? =
             when {
-                op == Operator.LESS_THAN && right is SqlValueAtom -> index.lessThan(right)
-                op == Operator.LESS_EQ_THAN && right is SqlValueAtom -> index.lessThanEq(right)
-                op == Operator.GREATER_THAN && right is SqlValueAtom -> index.moreThan(right)
-                op == Operator.GREATER_EQ_THAN && right is SqlValueAtom -> index.moreThanEq(right)
-                op == Operator.EQ && right is SqlValueAtom -> index.eq(right)
-                op == Operator.IN && right is ListValue -> index.inRange(right)
+                op == Operator.NOT_EQ || op == Operator.NOT_IN || op == Operator.NOT_LIKE || op == Operator.LIKE -> null
+                op == Operator.LESS_THAN && right is SqlValueAtom -> {
+                    { index.lessThan(right) }
+                }
+                op == Operator.LESS_EQ_THAN && right is SqlValueAtom -> {
+                    { index.lessThanEq(right) }
+                }
+                op == Operator.GREATER_THAN && right is SqlValueAtom -> {
+                    { index.moreThan(right) }
+                }
+                op == Operator.GREATER_EQ_THAN && right is SqlValueAtom -> {
+                    { index.moreThanEq(right) }
+                }
+                op == Operator.EQ && right is SqlValueAtom -> {
+                    { index.eq(right) }
+                }
+                op == Operator.IN && right is ListValue -> {
+                    { index.inRange(right) }
+                }
                 else -> throw RuntimeException("Unable to exec op = $op")
             }
+        return if (lazyOffsets == null) {
+            null
+        } else {
+            IndexEvaluator(setOf(indexMeta.description), lazyOffsets)
         }
-        return IndexEvaluator(setOf(indexMeta.description), lazyOffsets)
     }
 
     override fun visitNode(node: ExpressionNode): IndexEvaluator? {
