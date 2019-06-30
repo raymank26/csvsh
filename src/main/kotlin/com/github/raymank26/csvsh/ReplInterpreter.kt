@@ -95,5 +95,5 @@ fun prettifyDataset(dataset: DatasetResult): String {
     }
 
     return FlipTable.of(header, rows.toList().toTypedArray()) +
-            if (overflow) "Shown only first $rowsLimit rows." else ""
+            if (overflow) "Shown only first $rowsLimit rows.\n" else "\n"
 }

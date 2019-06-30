@@ -36,6 +36,8 @@ class SqlWhereVisitor : SqlBaseVisitor<WherePlanDescription?>() {
                 Operator.LESS_EQ_THAN -> Operator.GREATER_EQ_THAN
                 Operator.GREATER_EQ_THAN -> Operator.LESS_EQ_THAN
             }
+        } else if (right is RefValue && left is RefValue) {
+            throw PlannerException("Ref values on both sides are not supported yet")
         }
         return WherePlanDescription(ExpressionAtom(left, operator, right))
     }
