@@ -40,6 +40,16 @@ class SqlExecutorTest : SqlTestUtils() {
     }
 
     @Test
+    fun testEqNull() {
+        val dataset = executeSelect("SELECT * FROM '/test/input.csv' WHERE a = null OR b = null",
+                getDefaultDatasetFactory())
+        val datasetList = dataset.rows.toList()
+        assertEquals(3, datasetList.size)
+        println(prettifyDataset(dataset.copy(ClosableSequence(datasetList.asSequence()))))
+
+    }
+
+    @Test
     fun testIn() {
         val dataset = executeSelect("SELECT * FROM '/test/input.csv' WHERE a IN ('bazz', 'баз') AND c IN (-1.0) AND b NOT IN (2)",
                 getDefaultDatasetFactory())

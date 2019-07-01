@@ -28,6 +28,7 @@ class DatasetIndexOffsetCollectorVisitor(indexes: List<IndexDescriptionAndPath>)
 
         val lazyOffsets: (() -> FoundOffsets)? =
             when {
+                right == null -> null
                 op == Operator.NOT_EQ || op == Operator.NOT_IN || op == Operator.NOT_LIKE || op == Operator.LIKE -> null
                 op == Operator.LESS_THAN && right is SqlValueAtom -> {
                     { index.lessThan(right) }

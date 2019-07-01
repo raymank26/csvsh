@@ -24,7 +24,7 @@ class SqlWhereVisitor : SqlBaseVisitor<WherePlanDescription?>() {
                 ?: throw RuntimeException("Unable to parse operator ${ctx.BOOL_COMP().text}")
 
         if (right is RefValue && left !is RefValue) {
-            val temp: SqlValue = left
+            val temp: SqlValue? = left
             left = right
             right = temp
             operator = when (operator) {
@@ -36,6 +36,8 @@ class SqlWhereVisitor : SqlBaseVisitor<WherePlanDescription?>() {
             }
         } else if (right is RefValue && left is RefValue) {
             throw PlannerException("Ref values on both sides are not supported yet")
+        } else if (left == null) {
+            throw PlannerException("Left value is null")
         }
         return WherePlanDescription(ExpressionAtom(left, operator, right))
     }
@@ -89,12 +91,13 @@ class SqlWhereVisitor : SqlBaseVisitor<WherePlanDescription?>() {
         }
     }
 
-    private fun parseVariable(variable: SqlParser.VariableContext): SqlValue {
+    private fun parseVariable(variable: SqlParser.VariableContext): SqlValue? {
         return when (variable.type) {
             "float" -> DoubleValue(variable.floatNumber().text.toDouble())
             "integer" -> LongValue(variable.integerNumber().text.toLong())
             "string" -> StringValue(variable.string().text.drop(1).dropLast(1))
             "reference" -> RefValue(variable.reference().text)
+            "null" -> null
             else -> throw RuntimeException("Unable to parse type = ${variable.type}")
         }
     }

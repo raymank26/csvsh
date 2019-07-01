@@ -74,6 +74,16 @@ class SqlPlannerTest : SqlTestUtils() {
     }
 
     @Test
+    fun testNullFailure() {
+        testPlannerFailure { makePlan("SELECT * FROM '/test/input.csv' WHERE null = 2") }
+    }
+
+    @Test
+    fun testNullSwap() {
+        makePlan("SELECT * FROM '/test/input.csv' WHERE null = b")
+    }
+
+    @Test
     fun testIndexNotUsedIfNegative() {
         indexesManager.createIndex(dataPath, "aIndex", "a", readerFactory)
         val plan = makePlan("SELECT * from '/test/input.csv' WHERE a <> 'b'")

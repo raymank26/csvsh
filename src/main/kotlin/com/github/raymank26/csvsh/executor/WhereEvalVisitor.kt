@@ -44,7 +44,14 @@ class WhereEvalVisitor(private val datasetRow: DatasetRow) : BaseExpressionVisit
         }
     }
 
-    private fun checkAtom(atom: ExpressionAtom, dataColumn: SqlValueAtom, sqlValue: SqlValue): Boolean {
+    private fun checkAtom(atom: ExpressionAtom, dataColumn: SqlValueAtom, sqlValue: SqlValue?): Boolean {
+        if (sqlValue == null) {
+            return when (atom.operator) {
+                EQ -> dataColumn.asValue == null
+                NOT_EQ -> dataColumn.asValue != null
+                else -> false
+            }
+        }
         return when (atom.operator) {
             LESS_THAN -> dataColumn lt (sqlValue as SqlValueAtom)
             LESS_EQ_THAN -> dataColumn lte (sqlValue as SqlValueAtom)

@@ -61,6 +61,7 @@ variable locals [String type]
  : integerNumber { $type = "integer"; }
  | floatNumber { $type = "float"; }
  | string { $type = "string"; }
+ | nullVal { $type = "null"; }
  | reference { $type = "reference"; }
  ;
 
@@ -70,6 +71,10 @@ reference
 
 string
  : IDENTIFIER_Q
+ ;
+
+nullVal
+ : NULL
  ;
 
 integerNumber
@@ -196,6 +201,10 @@ TABLE
 
 INDEX
  : 'INDEX'
+ ;
+
+NULL
+ : 'NULL'
  ;
 
 IDENTIFIER_Q

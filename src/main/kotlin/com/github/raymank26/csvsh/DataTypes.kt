@@ -39,7 +39,7 @@ sealed class Expression {
     abstract fun <T> accept(visitor: BaseExpressionVisitor<T>): T
 }
 
-data class ExpressionAtom(val leftVal: SqlValue, val operator: Operator, val rightVal: SqlValue) : Expression() {
+data class ExpressionAtom(val leftVal: SqlValue, val operator: Operator, val rightVal: SqlValue?) : Expression() {
     override fun <T> accept(visitor: BaseExpressionVisitor<T>): T {
         return visitor.visitAtom(this)
     }
