@@ -20,28 +20,20 @@ import java.util.BitSet
 class SqlAstBuilder {
 
     fun parse(sqlStatement: String): StatementType {
-        val cts = CommonTokenStream(SqlLexer(CaseChangingCharStream(CharStreams.fromString(sqlStatement), true)))
+        val lexer = SqlLexer(CaseChangingCharStream(CharStreams.fromString(sqlStatement), true))
+        val errorListener = ErrorListener()
+        lexer.removeErrorListeners()
+        lexer.addErrorListener(errorListener)
+        val cts = CommonTokenStream(lexer)
+        if (errorListener.unknownExceptionOccurred) {
+            throw RuntimeException("Exception while executing parser")
+        }
         val parser = SqlParser(cts)
-        var unknownExceptionOccurred = false
-        parser.addErrorListener(object : BaseErrorListener() {
-            override fun reportAttemptingFullContext(recognizer: Parser?, dfa: DFA?, startIndex: Int, stopIndex: Int, conflictingAlts: BitSet?, configs: ATNConfigSet?) {
-                unknownExceptionOccurred = true
-            }
+        parser.removeErrorListeners()
 
-            override fun syntaxError(recognizer: Recognizer<*, *>?, offendingSymbol: Any?, line: Int, charPositionInLine: Int, msg: String?, e: RecognitionException?) {
-                throw SyntaxException("Unable to parse statement, line: $line, charPosition: $charPositionInLine")
-            }
-
-            override fun reportAmbiguity(recognizer: Parser?, dfa: DFA?, startIndex: Int, stopIndex: Int, exact: Boolean, ambigAlts: BitSet?, configs: ATNConfigSet?) {
-                unknownExceptionOccurred = true
-            }
-
-            override fun reportContextSensitivity(recognizer: Parser?, dfa: DFA?, startIndex: Int, stopIndex: Int, prediction: Int, configs: ATNConfigSet?) {
-                unknownExceptionOccurred = true
-            }
-        })
+        parser.addErrorListener(errorListener)
         val parse = parser.parse()
-        if (unknownExceptionOccurred) {
+        if (errorListener.unknownExceptionOccurred) {
             throw RuntimeException("Exception while executing parser")
         }
         return when {
@@ -52,6 +44,27 @@ class SqlAstBuilder {
             parse?.statement()?.describeSelect() != null -> DescribeSelect(parse.statement().describeSelect())
             else -> throw RuntimeException("Unable to find appropriate construction")
         }
+    }
+}
+
+private class ErrorListener : BaseErrorListener() {
+
+    var unknownExceptionOccurred = false
+
+    override fun reportAttemptingFullContext(recognizer: Parser?, dfa: DFA?, startIndex: Int, stopIndex: Int, conflictingAlts: BitSet?, configs: ATNConfigSet?) {
+        unknownExceptionOccurred = true
+    }
+
+    override fun syntaxError(recognizer: Recognizer<*, *>?, offendingSymbol: Any?, line: Int, charPositionInLine: Int, msg: String?, e: RecognitionException?) {
+        throw SyntaxException("Unable to parse statement, line: $line, charPosition: $charPositionInLine")
+    }
+
+    override fun reportAmbiguity(recognizer: Parser?, dfa: DFA?, startIndex: Int, stopIndex: Int, exact: Boolean, ambigAlts: BitSet?, configs: ATNConfigSet?) {
+        unknownExceptionOccurred = true
+    }
+
+    override fun reportContextSensitivity(recognizer: Parser?, dfa: DFA?, startIndex: Int, stopIndex: Int, prediction: Int, configs: ATNConfigSet?) {
+        unknownExceptionOccurred = true
     }
 }
 
