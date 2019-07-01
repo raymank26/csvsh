@@ -46,7 +46,6 @@ class SqlExecutorTest : SqlTestUtils() {
         val datasetList = dataset.rows.toList()
         assertEquals(3, datasetList.size)
         println(prettifyDataset(dataset.copy(ClosableSequence(datasetList.asSequence()))))
-
     }
 
     @Test

@@ -53,6 +53,11 @@ class SqlGrammarTest : SqlTestUtils() {
     }
 
     @Test
+    fun testEmptyString() {
+        testParser("select * from 'a' where b = ''")
+    }
+
+    @Test
     fun testFailure() {
         testFailure {
             testParser("select a")
