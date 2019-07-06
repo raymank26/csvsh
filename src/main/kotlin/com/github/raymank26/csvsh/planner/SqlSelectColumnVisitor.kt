@@ -12,6 +12,6 @@ class SqlSelectColumnVisitor : SqlBaseVisitor<SelectStatementExpr>() {
     }
 
     override fun visitSelectColumnAgg(ctx: SqlParser.SelectColumnAggContext): SelectStatementExpr {
-        return AggSelectExpr(ctx.AGG().text.toLowerCase(), ctx.reference().text)
+        return AggSelectExpr(ctx.AGG().text.toLowerCase(), ctx.reference()?.text ?: ctx.allColumns().text)
     }
 }

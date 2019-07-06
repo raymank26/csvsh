@@ -53,7 +53,7 @@ whereExpr
  ;
 
 selectColumn
- : AGG LEFT_PAR reference RIGHT_PAR #selectColumnAgg
+ : AGG LEFT_PAR (reference | allColumns) RIGHT_PAR #selectColumnAgg
  | reference #selectColumnPlain
  ;
 

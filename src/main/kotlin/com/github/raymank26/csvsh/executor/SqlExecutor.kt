@@ -6,6 +6,7 @@ import com.github.raymank26.csvsh.ColumnInfo
 import com.github.raymank26.csvsh.DatasetResult
 import com.github.raymank26.csvsh.DatasetRow
 import com.github.raymank26.csvsh.FieldType
+import com.github.raymank26.csvsh.LongValue
 import com.github.raymank26.csvsh.SelectFieldExpr
 import com.github.raymank26.csvsh.SqlValueAtom
 import com.github.raymank26.csvsh.planner.OrderByPlanDescription
@@ -28,7 +29,7 @@ class SqlExecutor {
         if (sqlPlan.wherePlanDescription != null) {
             dataset = applyWhere(sqlPlan, dataset)
         }
-        dataset = if (sqlPlan.groupByFields.isNotEmpty()) {
+        dataset = if (sqlPlan.isAggregation) {
             applyGroupBy(sqlPlan, dataset)
         } else {
             applySelect(sqlPlan, dataset)
@@ -103,24 +104,18 @@ class SqlExecutor {
             groupByBuckets.compute(bucketDesc) { _, prev ->
                 if (prev != null) {
                     for ((i, aggStatement) in aggStatements.withIndex()) {
-                        prev[i].process(row.getCell(aggStatement.fieldName))
+                        applyRowToAggregate(prev[i], row, aggStatement.fieldName)
                     }
                     prev
                 } else {
-                    val initAggList = mutableListOf<AggregateFunction>()
-                    for (i in 0 until aggStatements.size) {
-                        val aggStatement = aggStatements[i]
-                        val cell = row.getCell(aggStatement.fieldName)
-                        val agg = AGGREGATES_MAPPING[Pair(aggStatement.type, cell.type)]?.invoke()
-                                ?: throw PlannerException("Unable to execute agg of type = ${aggStatement.type} and column type = ${cell.type}")
-                        agg.process(cell)
-                        initAggList.add(agg)
-                    }
+                    val initAggList = initAggregates(aggStatements, row)
                     if (aggToColumnInfo.isEmpty()) {
+                        for ((index, aggregateFunction) in initAggList.withIndex()) {
+                            val aggSelectStatement = aggStatements[index]
+                            aggToColumnInfo.add(ColumnInfo(aggregateFunction.valueType, aggSelectStatement.fullFieldName))
+
+                        }
                         for (i in 0 until aggStatements.size) {
-                            val aggStatement = aggStatements[i]
-                            val type = row.getCellType(aggStatement.fieldName)
-                            aggToColumnInfo.add(ColumnInfo(type, aggStatement.fullFieldName))
                         }
                     }
                     initAggList
@@ -138,6 +133,46 @@ class SqlExecutor {
             return DatasetResult(ClosableSequence(emptySequence()), newColumnInfo)
         }
 
+        val newRows = processGroupByRows(groupByBuckets, newColumnInfo)
+        return DatasetResult(ClosableSequence(newRows.asSequence()), newColumnInfo)
+    }
+
+    private fun initAggregates(aggStatements: List<AggSelectExpr>, row: DatasetRow): List<AggregateFunction> {
+        val initAggList = mutableListOf<AggregateFunction>()
+        for (i in 0 until aggStatements.size) {
+            val aggStatement: AggSelectExpr = aggStatements[i]
+
+            val agg = if (aggStatement.type == "count") {
+                Aggregates.COUNT_ANY.invoke()
+            } else {
+                val cell = row.getCell(aggStatement.fieldName)
+                AGGREGATES_MAPPING[Pair(aggStatement.type, cell.type)]?.invoke()
+                        ?: throw PlannerException("Unable to execute agg of type = ${aggStatement.type} and column type = ${cell.type}")
+            }
+            applyRowToAggregate(agg, row, aggStatement.fieldName)
+
+            initAggList.add(agg)
+        }
+        return initAggList
+    }
+
+    private fun applyRowToAggregate(aggregate: AggregateFunction, row: DatasetRow, fieldName: String) {
+        when (aggregate.aggType) {
+            AggregateType.COUNT ->
+                if (fieldName == "*") {
+                    aggregate.process(LongValue(1))
+                } else {
+                    val cell: SqlValueAtom = row.getCell(fieldName)
+                    if (cell.asValue != null) {
+                        aggregate.process(cell)
+                    }
+                }
+            else -> aggregate.process(row.getCell(fieldName))
+        }
+    }
+
+    private fun processGroupByRows(groupByBuckets: Map<List<Pair<ColumnInfo, SqlValueAtom>>, List<AggregateFunction>>,
+                                   newColumnInfo: List<ColumnInfo>): MutableList<DatasetRow> {
         val newRows = mutableListOf<DatasetRow>()
         var rowNum = 0
         for ((fixedFields, aggregates) in groupByBuckets) {
@@ -150,7 +185,7 @@ class SqlExecutor {
             }
             newRows.add(DatasetRow(rowNum++, columns, newColumnInfo, null))
         }
-        return DatasetResult(ClosableSequence(newRows.asSequence()), newColumnInfo)
+        return newRows
     }
 
     private fun applyOrderBy(orderByStmt: OrderByPlanDescription, dataset: DatasetResult): DatasetResult {
@@ -177,9 +212,6 @@ val AGGREGATES_MAPPING: Map<Pair<String, FieldType>, AggregateFunctionFactory> =
         Pair(Pair("max", FieldType.DOUBLE), Aggregates.MAX_FLOAT),
         Pair(Pair("max", FieldType.STRING), Aggregates.MAX_STRING),
         Pair(Pair("sum", FieldType.LONG), Aggregates.SUM_INT),
-        Pair(Pair("sum", FieldType.DOUBLE), Aggregates.SUM_FLOAT),
-        Pair(Pair("count", FieldType.LONG), Aggregates.COUNT_ANY),
-        Pair(Pair("count", FieldType.DOUBLE), Aggregates.COUNT_ANY),
-        Pair(Pair("count", FieldType.STRING), Aggregates.COUNT_ANY)
+        Pair(Pair("sum", FieldType.DOUBLE), Aggregates.SUM_FLOAT)
 )
 

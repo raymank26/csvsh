@@ -34,7 +34,8 @@ class SqlPlanner {
         } else {
             sqlAst.selectExpr().selectColumn().map { SqlSelectColumnVisitor().visit(it) }
         }
-        val groupByFields = if (sqlAst.groupByExpr() != null) {
+        val isAggregation = sqlAst.groupByExpr() != null || selectStatements.any { it is AggSelectExpr }
+        val groupByFields = if (isAggregation) {
             getGroupByExpression(sqlAst, selectStatements)
         } else {
             validateSelectExpression(reader, selectStatements)
@@ -51,7 +52,7 @@ class SqlPlanner {
             }
         }
         LOG.debug("Planning completed in ${TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - startTime)}ms.")
-        return SqlPlan(selectStatements, reader, sqlWherePlan, groupByFields, orderBy, limit, indexEvaluator)
+        return SqlPlan(selectStatements, reader, sqlWherePlan, groupByFields, orderBy, limit, indexEvaluator, isAggregation)
     }
 
     private fun validateSelectExpression(reader: DatasetReader, selectStatements: List<SelectStatementExpr>) {
@@ -68,12 +69,6 @@ class SqlPlanner {
 
     private fun getGroupByExpression(sqlAst: SqlParser.SelectContext, selectStatements: List<SelectStatementExpr>): List<String> {
         val groupedFields: List<String> = sqlAst.groupByExpr()?.reference()?.map { it.IDENTIFIER().text } ?: emptyList()
-        if (groupedFields.isEmpty()) {
-            return groupedFields
-        }
-        if (selectStatements.isEmpty()) {
-            throw PlannerException("Unable to select not grouped fields")
-        }
         val selectPlainFieldNames = selectStatements.mapNotNull { (it as? SelectFieldExpr)?.fieldName }
         if (selectPlainFieldNames.toSet() != groupedFields.toSet()) {
             throw PlannerException("Unable to select not grouped fields")

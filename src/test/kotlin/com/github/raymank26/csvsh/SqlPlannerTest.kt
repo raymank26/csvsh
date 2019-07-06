@@ -84,6 +84,18 @@ class SqlPlannerTest : SqlTestUtils() {
     }
 
     @Test
+    fun testSelectCountAll() {
+        makePlan("SELECT count(*), sum(*) from '/test/input.csv'")
+    }
+
+    @Test
+    fun testSelectAggFail() {
+        testPlannerFailure {
+            makePlan("SELECT count(*), b from '/test/input.csv'")
+        }
+    }
+
+    @Test
     fun testIndexNotUsedIfNegative() {
         indexesManager.createIndex(dataPath, "aIndex", "a", readerFactory)
         val plan = makePlan("SELECT * from '/test/input.csv' WHERE a <> 'b'")

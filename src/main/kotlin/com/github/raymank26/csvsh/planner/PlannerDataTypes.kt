@@ -11,7 +11,8 @@ data class SqlPlan(
         val groupByFields: List<String>,
         val orderByPlanDescription: OrderByPlanDescription?,
         val limit: Int?,
-        val indexEvaluator: IndexEvaluator?
+        val indexEvaluator: IndexEvaluator?,
+        val isAggregation: Boolean
 )
 
 data class OrderByPlanDescription(

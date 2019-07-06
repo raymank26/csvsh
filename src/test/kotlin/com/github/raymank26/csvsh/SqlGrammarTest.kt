@@ -72,6 +72,11 @@ class SqlGrammarTest : SqlTestUtils() {
     }
 
     @Test
+    fun testSelectCount() {
+        testParser("SELECT count(*) FROM 'a'")
+    }
+
+    @Test
     fun testLowercase() {
         testParser("select a from 'b'")
     }
