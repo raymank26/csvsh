@@ -52,10 +52,10 @@ class SqlExecutorTest : SqlTestUtils() {
     fun testIn() {
         val dataset = executeSelect("SELECT * FROM '/test/input.csv' WHERE a IN ('bazz', 'баз') AND c IN (-1.0) AND b NOT IN (2)",
                 getDefaultDatasetFactory())
-        val datasetList = dataset.rows.toList()
-        assertEquals(1, datasetList.size)
-        assertEquals(listOf(StringValue("bazz"), LongValue(null), DoubleValue(-1.0)), datasetList.first().columns)
-        println(prettifyDataset(dataset.copy(ClosableSequence(datasetList.asSequence()))))
+        checkDatasetResult(dataset) { rows ->
+            assertEquals(1, rows.size)
+            assertEquals(listOf(StringValue("bazz"), LongValue(null), DoubleValue(-1.0)), rows.first().columns)
+        }
     }
 
     @Test
