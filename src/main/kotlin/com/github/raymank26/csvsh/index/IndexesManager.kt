@@ -270,7 +270,7 @@ class IndexesManager(private val fileSystem: FileSystem, private val offsetsBuil
     fun listIndexes(dataPath: Path): List<IndexMeta> {
         val indexFile: Path = getIndexPath(dataPath)
         if (!fileSystem.isFileExists(indexFile)) {
-            throw PlannerException("Unable to locate index for table = $dataPath")
+            return emptyList()
         }
         return fileSystem.getDB(indexFile).use { env ->
             env.listIndexes()
