@@ -38,13 +38,16 @@ csvsh>> SELECT * FROM '/test/input.csv' WHERE a IN ('bazz', 'баз') AND c IN (
 ## Features
 
 - [x] `SELECT` query with `GROUP BY`, `ORDER BY` and `LIMIT` statements.
-- [x] Aggregates: `COUNT`, `MIN`, `MAX`, `SUM`
+- [x] Aggregates: `COUNT`, `MIN`, `MAX`, `SUM`.
 - [x] `DESCRIBE` query for `SELECT` and CSV data.
 - [x] Data types: string, double and long.
 - [x] `INDEXES` for any datatype above.
 - [x] Full-featured REPL (history, autocomplete, etc..) and one-shot execution mode.
 
-## Build
+## Contributing
 
-`./gradlew build`
+1. Fork the repo.
+2. Run build via `./gradlew build`
+3. Add a feature/fix a bug, add tests.
+4. Make a pull request.
 
