@@ -6,8 +6,9 @@ The application provides REPL with SQL-like language to query CSV located in fil
 Usage: cmd [OPTIONS]
 
 Options:
-  -c, --cmd TEXT  SQL statement to run
-  -h, --help      Show this message and exit
+  -c, --cmd CMD  SQL statement to run
+  -v, --version  Show version
+  -h, --help     Show this message and exit
 ```
 
 ## Examples
