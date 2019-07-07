@@ -44,7 +44,17 @@ dependencies {
 
 application {
     mainClassName = "com.github.raymank26.csvsh.AppKt"
-    applicationDefaultJvmArgs = listOf("--add-opens=java.base/java.nio=ALL-UNNAMED", "--add-opens=java.base/sun.nio.ch=ALL-UNNAMED")
+    applicationDefaultJvmArgs = listOf(
+            "--add-opens=java.base/java.nio=ALL-UNNAMED",
+            "--add-opens=java.base/sun.nio.ch=ALL-UNNAMED",
+            "-Dlogback.configurationFile=MY_APP_HOME/config/logback.xml")
+}
+
+tasks.startScripts {
+    doLast {
+        unixScript.writeText(unixScript.readText().replace("MY_APP_HOME", "\$APP_HOME"))
+        windowsScript.writeText(windowsScript.readText().replace("MY_APP_HOME", "%~dp0.."))
+    }
 }
 
 tasks.generateGrammarSource {
