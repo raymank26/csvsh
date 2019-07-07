@@ -61,6 +61,5 @@ tasks.generateGrammarSource {
     arguments = arguments + listOf("-visitor", "-long-messages", "-package", "com.github.raymank26.csvsh.sql")
 }
 
-//val compileKotlin: KotlinCompile by tasks
-project.tasks.getByName("compileKotlin").dependsOn(project.tasks.getByName("generateGrammarSource"))
+tasks.compileKotlin.get().dependsOn(project.tasks.getByName("generateGrammarSource"))
 

@@ -80,4 +80,9 @@ class SqlGrammarTest : SqlTestUtils() {
     fun testLowercase() {
         testParser("select a from 'b'")
     }
+
+    @Test
+    fun testWhitespaceString() {
+        testParser("SELECT * FROM 'a' WHERE artist LIKE '% Ensemble'")
+    }
 }

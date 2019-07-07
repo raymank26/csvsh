@@ -20,8 +20,9 @@ class SqlWhereVisitor : SqlBaseVisitor<WherePlanDescription?>() {
     override fun visitWhereExprAtom(ctx: SqlParser.WhereExprAtomContext): WherePlanDescription {
         var left = parseVariable(ctx.variable(0))
         var right = parseVariable(ctx.variable(1))
-        var operator = Operator.TOKEN_TO_OPERATOR[ctx.BOOL_COMP().text]
-                ?: throw RuntimeException("Unable to parse operator ${ctx.BOOL_COMP().text}")
+        val operatorName = ctx.BOOL_COMP().text.toUpperCase()
+        var operator = Operator.TOKEN_TO_OPERATOR[operatorName]
+                ?: throw RuntimeException("Unable to parse operator ${operatorName}")
 
         if (right is RefValue && left !is RefValue) {
             val temp: SqlValue? = left
@@ -43,8 +44,9 @@ class SqlWhereVisitor : SqlBaseVisitor<WherePlanDescription?>() {
     }
 
     override fun visitWhereExprIn(ctx: SqlParser.WhereExprInContext): WherePlanDescription {
-        val operator = Operator.TOKEN_TO_OPERATOR[ctx.BOOL_COMP_IN().text]
-                ?: throw RuntimeException("Unable to parse operator ${ctx.BOOL_COMP_IN().text}")
+        val operatorName = ctx.BOOL_COMP_IN().text.toUpperCase().toUpperCase()
+        val operator = Operator.TOKEN_TO_OPERATOR[operatorName]
+                ?: throw RuntimeException("Unable to parse operator ${operatorName}")
         val field: RefValue = parseVariable(ctx.variable(0)) as? RefValue
                 ?: throw PlannerException("Left variable has to be table field")
 

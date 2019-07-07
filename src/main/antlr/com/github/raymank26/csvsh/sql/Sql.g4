@@ -208,7 +208,7 @@ NULL
  ;
 
 IDENTIFIER_Q
- : '\'' (IDENTIFIER)* '\''
+ : '\'' (IDENTIFIER | ' ')* '\''
  ;
 
 IDENTIFIER
