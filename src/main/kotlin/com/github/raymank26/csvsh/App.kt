@@ -4,6 +4,7 @@
 package com.github.raymank26.csvsh
 
 import com.github.ajalt.clikt.core.CliktCommand
+import com.github.ajalt.clikt.parameters.options.flag
 import com.github.ajalt.clikt.parameters.options.option
 import org.slf4j.LoggerFactory
 import java.io.PrintWriter
@@ -18,16 +19,23 @@ fun main(args: Array<String>) {
 
 class Cmd : CliktCommand() {
 
-    private val cmd: String? by option("-c", "--cmd", help = "SQL statement to run")
+    private val cmd: String? by option("-c", "--cmd", help = "SQL statement to run", metavar = "CMD")
+    private val version: Boolean by option("-v", "--version", help = "Show version").flag()
 
     override fun run() {
-        val command = cmd
-        if (command == null) {
-            ReplInterpreter().runLoop()
-        } else {
-            val stringWriter = StringWriter()
-            ReplInterpreter().runOnce(command, PrintWriter(stringWriter))
-            echo(stringWriter.toString(), trailingNewline = false)
+        when {
+            version -> {
+                val version = BuildPropertiesParser().parse().version
+                echo(version)
+            }
+            cmd != null -> {
+                val stringWriter = StringWriter()
+                ReplInterpreter().runOnce(cmd!!, PrintWriter(stringWriter))
+                echo(stringWriter.toString(), trailingNewline = false)
+            }
+            else -> {
+                ReplInterpreter().runLoop()
+            }
         }
     }
 }

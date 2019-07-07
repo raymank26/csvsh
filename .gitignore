@@ -75,4 +75,6 @@ gradle-app.setting
 ### Gradle Patch ###
 **/build/
 
+/src/main/resources/build.properties
+
 # End of https://www.gitignore.io/api/gradle,intellij
