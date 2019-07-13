@@ -35,6 +35,8 @@ dependencies {
 
     implementation("com.github.ajalt:clikt:2.0.0")
 
+    implementation("org.antlr:antlr4-runtime:4.7.2")
+
     testImplementation("org.jetbrains.kotlin:kotlin-test")
 
     testImplementation("org.jetbrains.kotlin:kotlin-test-junit")
@@ -42,6 +44,12 @@ dependencies {
     testImplementation("io.mockk:mockk:1.9.3")
 
     antlr("org.antlr:antlr4:4.7.2")
+}
+
+configurations {
+    compile {
+        exclude(group = "org.antlr", module = "antlr4")
+    }
 }
 
 application {
@@ -77,4 +85,3 @@ val copyVersionToResources = tasks.create("copyVersionToResources") {
 }
 
 tasks.compileKotlin.get().dependsOn(project.tasks.generateGrammarSource, copyVersionToResources)
-
