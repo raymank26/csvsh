@@ -76,5 +76,5 @@ val copyVersionToResources = tasks.create("copyVersionToResources") {
     }
 }
 
-tasks.compileKotlin.get().dependsOn(project.tasks.getByName("generateGrammarSource"), copyVersionToResources)
+tasks.compileKotlin.get().dependsOn(project.tasks.generateGrammarSource, copyVersionToResources)
 
