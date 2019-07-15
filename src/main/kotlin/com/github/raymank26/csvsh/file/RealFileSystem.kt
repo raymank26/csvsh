@@ -2,6 +2,9 @@ package com.github.raymank26.csvsh.file
 
 import org.lmdbjava.Env
 import org.lmdbjava.EnvFlags
+import java.io.BufferedInputStream
+import java.io.BufferedOutputStream
+import java.io.BufferedReader
 import java.io.FileInputStream
 import java.io.FileOutputStream
 import java.io.FileReader
@@ -36,11 +39,11 @@ class RealFileSystem : FileSystem {
     }
 
     override fun getInputStream(path: Path): InputStream {
-        return FileInputStream(path.toFile())
+        return BufferedInputStream(FileInputStream(path.toFile()))
     }
 
     override fun getOutputStream(path: Path): OutputStream {
-        return FileOutputStream(path.toFile())
+        return BufferedOutputStream(FileOutputStream(path.toFile()))
     }
 
     override fun getSize(path: Path): Long {
@@ -49,7 +52,15 @@ class RealFileSystem : FileSystem {
 }
 
 private class RealNavigableReader(private val randomAccessFile: RandomAccessFile) : NavigableReader {
-    private var reader = FileReader(randomAccessFile.fd)
+
+    private var reader: Reader
+    private val encoding: String
+
+    init {
+        val tmpReader = FileReader(randomAccessFile.fd)
+        encoding = tmpReader.encoding
+        reader = BufferedReader(tmpReader)
+    }
 
     override fun asReader(): Reader {
         return reader
@@ -65,7 +76,7 @@ private class RealNavigableReader(private val randomAccessFile: RandomAccessFile
 
     override fun seek(offset: Long) {
         randomAccessFile.seek(offset)
-        reader = FileReader(randomAccessFile.fd)
+        reader = BufferedReader(FileReader(randomAccessFile.fd))
     }
 
     override fun getByteOffset(): Long {
@@ -73,7 +84,7 @@ private class RealNavigableReader(private val randomAccessFile: RandomAccessFile
     }
 
     override fun getEncoding(): String {
-        return reader.encoding
+        return encoding
     }
 
     override fun close() {

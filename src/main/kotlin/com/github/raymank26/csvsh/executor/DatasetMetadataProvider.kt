@@ -33,7 +33,8 @@ class DatasetMetadataProvider(private val fileSystem: FileSystem,
     fun getOrCreate(dataPath: Path): DatasetMetadata {
         val metadataPath = getMetadataPath(dataPath)
         val metadata = readMetadataContent(metadataPath, dataPath)
-        if (metadata != null && metadata.csvMd5 == fileSystem.getMd5(dataPath)) {
+        val computedMd5 = fileSystem.getMd5(dataPath)
+        if (metadata != null && metadata.csvMd5 == computedMd5) {
             return metadata
         }
         return createAndSaveMetadata(metadataPath, dataPath)

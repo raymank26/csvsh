@@ -13,10 +13,6 @@ import com.github.raymank26.csvsh.executor.DatasetOffset
 import com.github.raymank26.csvsh.file.FileSystem
 import com.github.raymank26.csvsh.file.getFilenameWithoutExtension
 import com.github.raymank26.csvsh.planner.PlannerException
-import com.google.common.collect.ImmutableMap
-import com.google.common.collect.Ordering
-import com.google.common.primitives.Doubles
-import com.google.common.primitives.Longs
 import org.lmdbjava.DbiFlags
 import org.lmdbjava.Env
 import org.lmdbjava.KeyRange
@@ -34,13 +30,13 @@ interface FieldSerializer {
 private val BYTE_BUFFER_LONG_CMP = Comparator<ByteBuffer> { o1, o2 ->
     val a = o1.getLong(0)
     val b = o2.getLong(0)
-    Longs.compare(a, b)
+    java.lang.Long.compare(a, b)
 }
 
 private val BYTE_BUFFER_DOUBLE_CMP = Comparator<ByteBuffer> { o1, o2 ->
     val a = o1.getDouble(0)
     val b = o2.getDouble(0)
-    Doubles.compare(a, b)
+    java.lang.Double.compare(a, b)
 }
 
 object LongSerializer : FieldSerializer {
@@ -82,7 +78,7 @@ object StringSerializer : FieldSerializer {
     }
 
     override fun comparator(): Comparator<ByteBuffer> {
-        return Ordering.natural()
+        return Comparator.naturalOrder()
     }
 
     override fun fieldType(): FieldType {
@@ -111,10 +107,10 @@ object DoubleSerializer : FieldSerializer {
     }
 }
 
-private val INDEX_SERIALIZERS: Map<FieldType, FieldSerializer> = ImmutableMap.of(
-        FieldType.LONG, LongSerializer,
-        FieldType.DOUBLE, DoubleSerializer,
-        FieldType.STRING, StringSerializer
+private val INDEX_SERIALIZERS: Map<FieldType, FieldSerializer> = mapOf(
+        Pair(FieldType.LONG, LongSerializer),
+        Pair(FieldType.DOUBLE, DoubleSerializer),
+        Pair(FieldType.STRING, StringSerializer)
 )
 
 /**

@@ -21,7 +21,7 @@ dependencies {
 
     implementation("org.apache.commons:commons-csv:1.6")
 
-    implementation("com.google.guava:guava:28.0-jre")
+    implementation("commons-codec:commons-codec:1.12")
 
     implementation("org.lmdbjava:lmdbjava:0.7.0")
 
@@ -49,6 +49,12 @@ dependencies {
 configurations {
     compile {
         exclude(group = "org.antlr", module = "antlr4")
+    }
+}
+
+tasks.compileKotlin {
+    kotlinOptions {
+        jvmTarget = "1.8"
     }
 }
 

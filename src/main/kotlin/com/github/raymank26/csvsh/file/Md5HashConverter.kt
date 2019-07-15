@@ -1,6 +1,6 @@
 package com.github.raymank26.csvsh.file
 
-import com.google.common.io.BaseEncoding
+import org.apache.commons.codec.binary.Hex
 
 class Md5HashConverter {
 
@@ -9,10 +9,10 @@ class Md5HashConverter {
     }
 
     fun serialize(md5Hash: Md5Hash): String {
-        return BaseEncoding.base16().lowerCase().encode(md5Hash.content)
+        return Hex.encodeHexString(md5Hash.content)
     }
 
     fun deserialize(content: String): Md5Hash {
-        return Md5Hash(BaseEncoding.base16().lowerCase().decode(content))
+        return Md5Hash(Hex.decodeHex(content))
     }
 }

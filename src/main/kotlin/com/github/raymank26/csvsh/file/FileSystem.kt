@@ -1,14 +1,14 @@
 package com.github.raymank26.csvsh.file
 
-import com.google.common.hash.Funnels
-import com.google.common.hash.Hashing
-import com.google.common.io.ByteStreams
 import org.lmdbjava.Env
 import java.io.InputStream
 import java.io.OutputStream
 import java.io.Reader
 import java.nio.ByteBuffer
 import java.nio.file.Path
+import java.security.DigestInputStream
+import java.security.MessageDigest
+
 
 interface FileSystem {
 
@@ -25,12 +25,12 @@ interface FileSystem {
     fun getSize(path: Path): Long
 
     fun getMd5(path: Path): Md5Hash {
-        val hashing = Hashing.md5()
-                .newHasher()
-        return getInputStream(path).use {
-            ByteStreams.copy(it, Funnels.asOutputStream(hashing))
-            Md5Hash(hashing.hash().asBytes())
+        val md = MessageDigest.getInstance("MD5")
+        getInputStream(path).use {
+            val dis = DigestInputStream(it, md)
+            dis.readBytes()
         }
+        return Md5Hash(md.digest())
     }
 }
 
