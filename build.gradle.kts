@@ -55,6 +55,7 @@ configurations {
 application {
     mainClassName = "com.github.raymank26.csvsh.AppKt"
     applicationDefaultJvmArgs = listOf(
+            "-XX:+IgnoreUnrecognizedVMOptions",
             "--add-opens=java.base/java.nio=ALL-UNNAMED",
             "--add-opens=java.base/sun.nio.ch=ALL-UNNAMED",
             "-Dlogback.configurationFile=MY_APP_HOME/config/logback.xml")
