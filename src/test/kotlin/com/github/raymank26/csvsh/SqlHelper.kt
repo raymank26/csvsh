@@ -14,8 +14,6 @@ import org.junit.After
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.Paths
-import kotlin.test.assertEquals
-import kotlin.test.fail
 
 /**
  * Date: 2019-05-20.
@@ -68,17 +66,6 @@ abstract class SqlTestUtils {
     fun executeSelect(sql: String, datasetReaderFactory: DatasetReaderFactory): DatasetResult {
         val plan = makePlan(sql, datasetReaderFactory)
         return sqlExecutor.execute(plan)
-    }
-
-    fun testFailure(exceptionClazz: Class<*>? = null, r: () -> Unit) {
-        try {
-            r()
-            fail("Passed function has been executed normally, but failure has been expected")
-        } catch (e: Exception) {
-            if (exceptionClazz != null) {
-                assertEquals(exceptionClazz, e.javaClass)
-            }
-        }
     }
 
     @After

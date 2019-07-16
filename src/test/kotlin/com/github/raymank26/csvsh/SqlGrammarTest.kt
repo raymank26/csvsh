@@ -57,18 +57,14 @@ class SqlGrammarTest : SqlTestUtils() {
         testParser("select * from 'a' where b = ''")
     }
 
-    @Test
+    @Test(expected = Exception::class)
     fun testFailure() {
-        testFailure {
-            testParser("select a")
-        }
+        testParser("select a")
     }
 
-    @Test
+    @Test(expected = Exception::class)
     fun testFailureUnrecognizedToken() {
-        testFailure {
-            testParser("SELECT * FROM 'a' WHERE round = 'seed' AND state != 'CA'")
-        }
+        testParser("SELECT * FROM 'a' WHERE round = 'seed' AND state != 'CA'")
     }
 
     @Test

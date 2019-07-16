@@ -63,19 +63,19 @@ class SqlPlannerTest : SqlTestUtils() {
         makePlan("SELECT b,a,MAX(c) FROM '/test/input.csv' GROUP BY a,b")
     }
 
-    @Test
+    @Test(expected = PlannerException::class)
     fun testGroupByFailure1() {
-        testPlannerFailure { makePlan("SELECT a,b,c FROM '/test/input.csv' GROUP BY a,b") }
+        makePlan("SELECT a,b,c FROM '/test/input.csv' GROUP BY a,b")
     }
 
-    @Test
+    @Test(expected = PlannerException::class)
     fun testGroupByFailure2() {
-        testPlannerFailure { makePlan("SELECT * FROM '/test/input.csv' GROUP BY a") }
+        makePlan("SELECT * FROM '/test/input.csv' GROUP BY a")
     }
 
-    @Test
+    @Test(expected = PlannerException::class)
     fun testNullFailure() {
-        testPlannerFailure { makePlan("SELECT * FROM '/test/input.csv' WHERE null = 2") }
+        makePlan("SELECT * FROM '/test/input.csv' WHERE null = 2")
     }
 
     @Test
@@ -88,11 +88,9 @@ class SqlPlannerTest : SqlTestUtils() {
         makePlan("SELECT count(*), sum(*) from '/test/input.csv'")
     }
 
-    @Test
+    @Test(expected = PlannerException::class)
     fun testSelectAggFail() {
-        testPlannerFailure {
-            makePlan("SELECT count(*), b from '/test/input.csv'")
-        }
+        makePlan("SELECT count(*), b from '/test/input.csv'")
     }
 
     @Test
@@ -100,9 +98,5 @@ class SqlPlannerTest : SqlTestUtils() {
         indexesManager.createIndex(dataPath, "aIndex", "a", readerFactory)
         val plan = makePlan("SELECT * from '/test/input.csv' WHERE a <> 'b'")
         assertEquals(null, plan.indexEvaluator)
-    }
-
-    private fun testPlannerFailure(r: () -> Unit) {
-        testFailure(PlannerException::class.java) { r() }
     }
 }
