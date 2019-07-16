@@ -1,5 +1,12 @@
 The application provides REPL with SQL-like language to query CSV located in filesystem.
 
+## Installation
+
+MacOS
+```
+brew install raymank26/tools/csvsh
+```
+
 ## Usage
 
 ```csvsh --help
@@ -33,6 +40,26 @@ csvsh>> SELECT * FROM '/test/input.csv' WHERE a IN ('bazz', 'баз') AND c IN (
 ╠══════╪══════╪══════╣
 ║ bazz │ null │ -1.0 ║
 ╚══════╧══════╧══════╝
+```
+
+3. More complicated query with `GROUP BY`, `ORDER BY`, `LIMIT`
+
+```
+csvsh>> SELECT city, COUNT(*) FROM '/test/input2.csv' GROUP BY city WHERE city <> '' ORDER BY city LIMIT 5
+
+╔══════════════╤══════════╗
+║ city         │ count(*) ║
+╠══════════════╪══════════╣
+║ Acton        │ 3        ║
+╟──────────────┼──────────╢
+║ Agoura Hills │ 2        ║
+╟──────────────┼──────────╢
+║ Alameda      │ 1        ║
+╟──────────────┼──────────╢
+║ Albuquerque  │ 3        ║
+╟──────────────┼──────────╢
+║ Aliso Viejo  │ 2        ║
+╚══════════════╧══════════╝
 ```
 
 ## Features

@@ -78,7 +78,7 @@ tasks.generateGrammarSource {
     arguments = arguments + listOf("-visitor", "-long-messages", "-package", "com.github.raymank26.csvsh.sql")
 }
 
-version = "0.0.1"
+version = "0.0.2"
 
 val copyVersionToResources = tasks.create("copyVersionToResources") {
     doLast {
