@@ -5,10 +5,10 @@ import com.github.raymank26.csvsh.DatasetReader
 import com.github.raymank26.csvsh.DatasetReaderFactory
 import com.github.raymank26.csvsh.SelectFieldExpr
 import com.github.raymank26.csvsh.SelectStatementExpr
+import com.github.raymank26.csvsh.file.resolvePath
 import com.github.raymank26.csvsh.index.IndexDescription
 import com.github.raymank26.csvsh.sql.SqlParser
 import org.slf4j.LoggerFactory
-import java.nio.file.Paths
 import java.util.concurrent.TimeUnit
 
 private val LOG = LoggerFactory.getLogger(SqlPlanner::class.java)
@@ -19,8 +19,8 @@ private val LOG = LoggerFactory.getLogger(SqlPlanner::class.java)
 class SqlPlanner {
 
     fun createPlan(sqlAst: SqlParser.SelectContext, datasetReaderFactory: DatasetReaderFactory): SqlPlan {
-        val startTime = System.nanoTime();
-        val tablePath = Paths.get(sqlAst.table().IDENTIFIER_Q().text.drop(1).dropLast(1))
+        val startTime = System.nanoTime()
+        val tablePath = resolvePath(sqlAst.table())
         val reader = datasetReaderFactory.getReader(tablePath)
                 ?: throw PlannerException("Unable to find input for path = $tablePath")
         val sqlWherePlan = sqlAst.whereExpr()?.let { SqlWhereVisitor().visit(it) }
