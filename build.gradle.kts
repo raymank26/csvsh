@@ -1,3 +1,4 @@
+import java.nio.file.Files
 import java.util.Properties
 
 plugins {
@@ -82,7 +83,10 @@ version = "0.0.2"
 
 val copyVersionToResources = tasks.create("copyVersionToResources") {
     doLast {
-        projectDir.toPath().resolve("src").resolve("main").resolve("resources").resolve("build.properties").toFile()
+        val resDir = projectDir.toPath().resolve("src").resolve("main").resolve("resources")
+        Files.createDirectories(resDir)
+
+        resDir.resolve("build.properties").toFile()
                 .outputStream().use { os ->
                     Properties().apply {
                         this.setProperty("version", version.toString())
