@@ -20,10 +20,6 @@ import kotlin.test.fail
 /**
  * Date: 2019-05-20.
  */
-private val sqlAstBuilder = SqlAstBuilder()
-private val sqlPlanner = SqlPlanner()
-private val sqlExecutor = SqlExecutor()
-
 private val testInput = """
     a,b,c
     foobar,1,3.0
@@ -44,6 +40,10 @@ val fileSystem = InMemoryFileSystem(mapOf(Pair(dataPath, testInput)), mapOf(
         Pair(indexPath, realIndexFilePath),
         Pair(offsetsPath, realOffsetsFilePath)
 ))
+
+private val sqlPlanner = SqlPlanner(fileSystem)
+private val sqlAstBuilder = SqlAstBuilder()
+private val sqlExecutor = SqlExecutor()
 
 val dataProvider = CsvContentDataProvider(CSVFormat.RFC4180.withNullString("null"))
 val fileOffsetsBuilder = FileOffsetsBuilder()

@@ -25,9 +25,9 @@ import org.apache.commons.csv.CSVFormat
 class ExecutorEngine {
 
     private val sqlParser: SqlAstBuilder = SqlAstBuilder()
-    private val sqlPlanner: SqlPlanner = SqlPlanner()
     private val sqlExecutor: SqlExecutor = SqlExecutor()
     private val fileSystem: FileSystem = RealFileSystem()
+    private val sqlPlanner: SqlPlanner = SqlPlanner(fileSystem)
     private val contentDataProvider: ContentDataProvider = CsvContentDataProvider(CSVFormat.RFC4180.withNullString("null"))
     private val fileOffsetsBuilder = FileOffsetsBuilder()
     private val indexesManager = IndexesManager(fileSystem, fileOffsetsBuilder)

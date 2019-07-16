@@ -18,9 +18,14 @@ import java.nio.file.Path
  * Date: 2019-06-13.
  */
 class InMemoryFileSystem(private val contentMapping: Map<Path, String>, private val indexesMapping: Map<Path, Path>) : FileSystem {
+
     val outputMapping: MutableMap<Path, ByteArrayOutputStream> = mutableMapOf()
 
     constructor(contentMapping: Map<Path, String>) : this(contentMapping, emptyMap())
+
+    override fun toValidAbsolutePath(path: Path): Path {
+        return path
+    }
 
     override fun isFileExists(path: Path): Boolean {
         if (contentMapping.containsKey(path)) {

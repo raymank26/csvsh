@@ -1,13 +1,11 @@
 package com.github.raymank26.csvsh.file
 
-import com.github.raymank26.csvsh.sql.SqlParser
 import org.lmdbjava.Env
 import java.io.InputStream
 import java.io.OutputStream
 import java.io.Reader
 import java.nio.ByteBuffer
 import java.nio.file.Path
-import java.nio.file.Paths
 import java.security.DigestInputStream
 import java.security.MessageDigest
 
@@ -15,6 +13,8 @@ import java.security.MessageDigest
 interface FileSystem {
 
     fun isFileExists(path: Path): Boolean
+
+    fun toValidAbsolutePath(path: Path): Path
 
     fun getDB(path: Path): Env<ByteBuffer>
 
@@ -53,10 +53,4 @@ fun getFilenameWithoutExtension(path: Path): String {
     }
 }
 
-fun resolvePath(tableContext: SqlParser.TableContext): Path {
-    val path = Paths.get(tableContext.IDENTIFIER_Q().text.drop(1).dropLast(1))
-    if (path.isAbsolute) {
-        return path
-    }
-    return Paths.get("").toAbsolutePath().resolve(path)
-}
+class FileSystemException(msg: String) : RuntimeException(msg)

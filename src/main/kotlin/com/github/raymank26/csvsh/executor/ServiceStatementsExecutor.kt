@@ -9,9 +9,9 @@ import com.github.raymank26.csvsh.FieldType
 import com.github.raymank26.csvsh.FilesystemDatasetReaderFactory
 import com.github.raymank26.csvsh.StringValue
 import com.github.raymank26.csvsh.file.FileSystem
-import com.github.raymank26.csvsh.file.resolvePath
 import com.github.raymank26.csvsh.index.IndexesManager
 import com.github.raymank26.csvsh.sql.SqlParser
+import com.github.raymank26.csvsh.util.toPath
 import java.nio.file.Path
 
 /**
@@ -23,7 +23,7 @@ class ServiceStatementsExecutor(private val datasetMetadataProvider: DatasetMeta
                                 private val indexesManager: IndexesManager) {
 
     fun createIndex(ctx: SqlParser.CreateIndexContext, datasetReaderFactory: DatasetReaderFactory) {
-        val dataPath = resolvePath(ctx.table())
+        val dataPath = fileSystem.toValidAbsolutePath(ctx.table().toPath())
         val indexName = ctx.indexName().text
         val fieldName = ctx.reference().text
         indexesManager.createIndex(dataPath, indexName, fieldName, datasetReaderFactory)
@@ -34,7 +34,7 @@ class ServiceStatementsExecutor(private val datasetMetadataProvider: DatasetMeta
     }
 
     fun describeTable(ctx: SqlParser.DescribeTableContext, readerFactory: DatasetReaderFactory): TableDescription? {
-        val dataPath = resolvePath(ctx.table())
+        val dataPath = fileSystem.toValidAbsolutePath(ctx.table().toPath())
         val reader = readerFactory.getReader(dataPath)
                 ?: return null
         val columnsDataset = describeColumns(reader.columnInfo)
@@ -80,7 +80,7 @@ class ServiceStatementsExecutor(private val datasetMetadataProvider: DatasetMeta
     }
 
     fun dropIndex(ctx: SqlParser.DropIndexContext) {
-        val csvPath = resolvePath(ctx.table())
+        val csvPath = fileSystem.toValidAbsolutePath(ctx.table().toPath())
         val indexName = ctx.indexName().text
         indexesManager.dropIndex(csvPath, indexName)
     }

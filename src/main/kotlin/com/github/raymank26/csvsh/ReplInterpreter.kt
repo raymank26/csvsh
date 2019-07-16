@@ -1,5 +1,6 @@
 package com.github.raymank26.csvsh
 
+import com.github.raymank26.csvsh.file.FileSystemException
 import com.github.raymank26.csvsh.planner.PlannerException
 import com.jakewharton.fliptables.FlipTable
 import org.jline.reader.EndOfFileException
@@ -66,6 +67,11 @@ class ReplInterpreter {
             outputWriter.println("Unable to execute statement: ${e.message}")
         } catch (e: SyntaxException) {
             outputWriter.println("Syntax exception: ${e.message}")
+        } catch (e: FileSystemException) {
+            outputWriter.println("Filesystem exception: ${e.message}")
+        } catch (e: Exception) {
+            outputWriter.println("Unhandled exception: $e")
+            e.printStackTrace(outputWriter)
         }
     }
 

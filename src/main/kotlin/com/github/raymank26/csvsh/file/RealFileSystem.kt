@@ -15,15 +15,28 @@ import java.io.Reader
 import java.nio.ByteBuffer
 import java.nio.file.Files
 import java.nio.file.Path
+import java.nio.file.Paths
 
 /**
  * Date: 2019-06-10.
  */
 class RealFileSystem : FileSystem {
+
+    override fun toValidAbsolutePath(path: Path): Path {
+        val resolvedPath = if (path.isAbsolute) {
+            path
+        } else {
+            Paths.get("").toAbsolutePath().resolve(path)
+        }
+        checkReadability(resolvedPath)
+        return resolvedPath
+    }
+
     override fun getDB(path: Path): Env<ByteBuffer> {
         if (!Files.exists(path)) {
             Files.createFile(path)
         }
+        checkReadability(path)
         return Env.create()
                 .setMapSize(500 * (1024 * 1024))
                 .setMaxDbs(100)
@@ -48,6 +61,12 @@ class RealFileSystem : FileSystem {
 
     override fun getSize(path: Path): Long {
         return Files.size(path)
+    }
+
+    private fun checkReadability(resolvedPath: Path) {
+        if (!Files.isRegularFile(resolvedPath) || !Files.isReadable(resolvedPath)) {
+            throw FileSystemException("File in path = $resolvedPath is neither readable nor regular")
+        }
     }
 }
 
