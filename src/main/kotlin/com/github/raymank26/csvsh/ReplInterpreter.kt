@@ -25,8 +25,8 @@ class ReplInterpreter {
 
     private val engine = ExecutorEngine()
 
-    fun runOnce(cmd: String, outputWriter: PrintWriter) {
-        execute(cmd, outputWriter)
+    fun runOnce(cmd: String, outputWriter: PrintWriter, tabularAsText: Boolean) {
+        execute(cmd, outputWriter, tabularAsText)
     }
 
     fun runLoop() {
@@ -52,14 +52,14 @@ class ReplInterpreter {
                 continue
             }
 
-            execute(line, outputWriter)
+            execute(line, outputWriter, false)
         }
     }
 
-    private fun execute(line: String, outputWriter: PrintWriter) {
+    private fun execute(line: String, outputWriter: PrintWriter, tabularAsText: Boolean) {
         try {
             val startTime = System.nanoTime()
-            processResponse(engine.execute(line), outputWriter)
+            processResponse(engine.execute(line), outputWriter, tabularAsText)
             LOG.info("Command execution completed in ${TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - startTime)}ms.")
         } catch (e: PlannerException) {
             outputWriter.println("Unable to build plan: ${e.message}")
@@ -75,14 +75,23 @@ class ReplInterpreter {
         }
     }
 
-    private fun processResponse(response: ExecutorResponse, outputWriter: PrintWriter) {
+    private fun processResponse(response: ExecutorResponse, outputWriter: PrintWriter, tabularAsText: Boolean) {
         when (response) {
-            is DatasetResponse -> outputWriter.print(prettifyDataset(response.value))
+            is DatasetResponse -> {
+                val preparedContent = if (tabularAsText) rawDataset(response.value) else prettifyDataset(response.value)
+                outputWriter.print(preparedContent)
+            }
             is TextResponse -> outputWriter.println(response.value)
             is VoidResponse -> Unit
-            is CompositeResponse -> response.parts.forEach { processResponse(it, outputWriter) }
+            is CompositeResponse -> response.parts.forEach { processResponse(it, outputWriter, tabularAsText) }
         }
     }
+}
+
+fun rawDataset(dataset: DatasetResult): String {
+    return dataset.rows.map {
+        it.columns.joinToString(",") { col -> col.asValue.toString() }
+    }.toList().joinToString("\n") + "\n"
 }
 
 fun prettifyDataset(dataset: DatasetResult): String {

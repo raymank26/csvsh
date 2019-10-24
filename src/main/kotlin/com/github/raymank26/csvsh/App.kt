@@ -21,6 +21,7 @@ class Cmd : CliktCommand() {
 
     private val cmd: String? by option("-c", "--cmd", help = "SQL statement to run", metavar = "CMD")
     private val version: Boolean by option("-v", "--version", help = "Show version").flag()
+    private val tabularAsText: Boolean by option("-t", "--tabular-as-text", help = "Outputs query in raw text format").flag()
 
     override fun run() {
         when {
@@ -30,7 +31,7 @@ class Cmd : CliktCommand() {
             }
             cmd != null -> {
                 val stringWriter = StringWriter()
-                ReplInterpreter().runOnce(cmd!!, PrintWriter(stringWriter))
+                ReplInterpreter().runOnce(cmd!!, PrintWriter(stringWriter), tabularAsText)
                 echo(stringWriter.toString(), trailingNewline = false)
             }
             else -> {
