@@ -2,7 +2,7 @@ import java.nio.file.Files
 import java.util.Properties
 
 plugins {
-    id("org.jetbrains.kotlin.jvm").version("1.3.11")
+    id("org.jetbrains.kotlin.jvm").version("1.3.50")
 
     application
 
